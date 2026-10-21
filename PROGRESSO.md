@@ -140,3 +140,17 @@ disponíveis silenciam a gravação.
    dizer `capturando de debate.monitor`.
 4. No painel, "Silenciar meu som" por 30 s: você não ouve, e o painel
    continua em OUVINDO, sem alerta de silêncio.
+
+### Resultado do teste da etapa 2b (21/10/2026, máquina do Eudes)
+
+- `factcheck audio-setup`: "Rota pronta: 1 conexão(ões) do navegador no
+  'Debate'". O Chrome recria a conexão de som ao pausar (1696 → 2022), e o
+  PipeWire a devolve sozinho ao "Debate" pelo nome do programa
+  (`module-stream-restore`).
+- `factcheck capture` sem `--source` escolheu `debate.monitor` sozinho.
+- Blocos 1 a 4 com som: -26,3 a -26,7 dBFS. **Blocos 5 a 7 com "Silenciar
+  meu som" ligado: -26,4, -26,2 e -26,2 dBFS** — a gravação não percebeu o
+  silêncio do operador, e nenhum alerta disparou.
+
+**Etapa 2 validada.** Fica para o checklist do dia: rodar `audio-setup` com o
+Globoplay já tocando, depois de qualquer reinício do computador.
