@@ -161,3 +161,28 @@ def test_parse_sink_inputs_without_client():
     out = "Sink Input #1481\n\tOwner Module: 536870917\n\tClient: n/a\n\tSink: 57\n\tMute: yes\n"
     [inp] = parse_sink_inputs(out, {})
     assert inp.client == "-" and inp.owner_module == "536870917" and inp.muted
+
+
+def test_real_output_from_operator_machine():
+    # Saída real de 21/10/2026: o Chrome recria a conexão (1696 → 2022) ao
+    # pausar e voltar, e o PipeWire a devolve ao "Debate" pelo nome do programa.
+    long = """Sink Input #1481
+	Driver: PipeWire
+	Owner Module: 536870917
+	Client: n/a
+	Sink: 57
+	Mute: no
+Sink Input #2022
+	Driver: PipeWire
+	Owner Module: n/a
+	Client: 2021
+	Sink: 1474
+	Mute: no
+	Properties:
+		application.name = "Google Chrome"
+		module-stream-restore.id = "sink-input-by-application-name:Google Chrome"
+"""
+    clients = parse_short_table("77\tPipeWire\tchrome\n2021\tPipeWire\tchrome\n")
+    loop, chrome = parse_sink_inputs(long, clients)
+    assert loop.client == "-" and loop.owner_module == "536870917"
+    assert chrome.client == "chrome" and chrome.sink == "1474" and chrome.owner_module is None

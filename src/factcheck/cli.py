@@ -113,7 +113,15 @@ def cmd_audio_setup(args: argparse.Namespace) -> int:
         print(f"  - {a}")
     if not args.desfazer:
         st = routing.status()
-        print("\nRota pronta." if st.ok else "\nATENÇÃO: a rota ficou incompleta (veja acima).")
+        if not st.ok:
+            print("\nATENÇÃO: a rota ficou incompleta (veja acima).")
+        elif st.browsers_total == 0:
+            # Sem navegador tocando não dá para confirmar a parte mais
+            # importante; dizer "pronta" aqui seria afirmar o que não se viu.
+            print("\nRota montada, mas SEM confirmação do navegador: dê play no Globoplay e "
+                  "rode de novo até aparecer a conexão do navegador no 'Debate'.")
+        else:
+            print(f"\nRota pronta: {st.browsers_on_debate} conexão(ões) do navegador no 'Debate'.")
         print("Regra do dia: NÃO mexa no volume do sistema nem no do player do Globoplay.")
         print("Para silenciar só o seu som, use o botão do painel.")
     return 0
