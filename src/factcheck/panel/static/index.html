@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel do operador</title>
+<style>
+  :root { --ok:#1a7f37; --warn:#b35900; --bad:#c62828; --muted:#57606a; --bg:#f6f8fa; }
+  body { font: 16px/1.4 system-ui, sans-serif; margin: 0; background: var(--bg); color: #1f2328; }
+  main { max-width: 760px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 1.2rem; margin: 0 0 12px; }
+  .card { background: #fff; border: 1px solid #d0d7de; border-radius: 8px; padding: 16px; }
+  .state { font-size: 1.6rem; font-weight: 700; margin-bottom: 8px; }
+  .state.ok { color: var(--ok); } .state.warn { color: var(--warn); } .state.bad { color: var(--bad); }
+  .meter { height: 18px; background: #e6e9ec; border-radius: 4px; overflow: hidden; }
+  .meter > div { height: 100%; width: 0; background: var(--ok); transition: width .2s; }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 12px 0 0; }
+  dt { color: var(--muted); }
+  .alert { margin-top: 12px; padding: 10px; border-radius: 6px; background: #fff1e5; color: var(--bad);
+           font-weight: 600; display: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Painel do operador — captura</h1>
+  <section class="card" aria-live="polite">
+    <div id="state" class="state">carregando…</div>
+    <div class="meter" aria-hidden="true"><div id="bar"></div></div>
+    <dl>
+      <dt>Nível agora</dt><dd id="level">—</dd>
+      <dt>Último bloco</dt><dd id="chunk">—</dd>
+      <dt>Silêncio</dt><dd id="silence">—</dd>
+      <dt>Captura nº</dt><dd id="run">—</dd>
+    </dl>
+    <div id="alert" class="alert"></div>
+  </section>
+</main>
+<script>
+// Texto e cor dizem a mesma coisa: o estado nunca depende só da cor.
+const $ = (id) => document.getElementById(id);
+function render(s) {
+  let label = "OUVINDO", cls = "ok", alert = "";
+  if (s.state === "nunca_iniciada") { label = "CAPTURA NÃO INICIADA"; cls = "bad";
+    alert = "Rode `factcheck capture` em outro terminal."; }
+  else if (s.stale) { label = "CAPTURA PARADA"; cls = "bad";
+    alert = `Sem notícia do processo de captura há ${s.seconds_since_update} s. Ele caiu ou travou.`; }
+  else if (s.state === "parado") { label = "CAPTURA ENCERRADA"; cls = "warn"; }
+  else if (s.state === "reconectando") { label = "RECONECTANDO"; cls = "bad"; alert = s.message || ""; }
+  else if (s.silence_alert) { label = "SILÊNCIO"; cls = "bad";
+    alert = `Sem som há ${Math.round(s.silence_seconds)} s. O Globoplay travou, deslogou ou está tocando em outra saída de som?`; }
+  $("state").textContent = label;
+  $("state").className = "state " + cls;
+  const lvl = s.level_dbfs;
+  $("level").textContent = lvl == null ? "—" : `${lvl.toFixed(1)} dBFS`;
+  // -60 dBFS = barra vazia, 0 dBFS = cheia.
+  $("bar").style.width = lvl == null ? "0" : `${Math.max(0, Math.min(100, (lvl + 60) / 60 * 100))}%`;
+  $("chunk").textContent = s.last_chunk_idx == null ? "nenhum ainda"
+    : `nº ${s.last_chunk_idx}, há ${Math.round(s.seconds_since_last_chunk)} s`;
+  $("silence").textContent = s.silence_seconds == null ? "—" : `${Math.round(s.silence_seconds)} s (alerta em ${s.silence_alert_after_s} s)`;
+  $("run").textContent = s.run_id ?? "—";
+  $("alert").textContent = alert;
+  $("alert").style.display = alert ? "block" : "none";
+}
+async function tick() {
+  try {
+    const r = await fetch("/api/capture/status", { cache: "no-store" });
+    if (!r.ok) throw new Error(r.status);
+    render(await r.json());
+  } catch (e) {
+    render({ state: "?", stale: true, seconds_since_update: "?" });
+    $("alert").textContent = "O painel não conseguiu ler o status (o painel caiu?).";
+  }
+}
+tick();
+setInterval(tick, 1000);
+</script>
+</body>
+</html>

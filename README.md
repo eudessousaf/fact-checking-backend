@@ -51,3 +51,35 @@ factcheck validate examples/*.json  # valida os arquivos de exemplo
 
 Chaves de API ficam **só** no `.env`, que está no `.gitignore`. Nunca as
 coloque em outro arquivo nem em mensagem de commit.
+
+## Captura de áudio (etapa 2)
+
+Use **dois terminais**, os dois dentro da pasta do projeto e com
+`source .venv/bin/activate`.
+
+```bash
+# 1. Qual servidor de som e quais saídas existem
+factcheck capture --list-sources
+
+# 2. Terminal A — painel (abra http://127.0.0.1:8765; usuário qualquer,
+#    senha = PANEL_PASSWORD do .env)
+factcheck panel
+
+# 3. Terminal B — captura do som do sistema (Ctrl+C para parar)
+factcheck capture
+```
+
+Os blocos ficam em `data/audio/run_NNNN/chunks/` e a gravação completa em
+`data/audio/run_NNNN/backup/`. Log de cada execução em `data/logs/`.
+
+Sem navegador, para testar o fluxo com um arquivo:
+
+```bash
+factcheck capture --file caminho/do/video.mp4 --realtime   # no ritmo real
+factcheck capture --file caminho/do/audio.wav              # o mais rápido possível
+```
+
+**Se não houver som:** o Globoplay provavelmente está tocando numa saída
+diferente da padrão (HDMI, fone Bluetooth). Rode `--list-sources`, veja qual
+está `RUNNING` enquanto o vídeo toca, e use `--source NOME` (ou ponha o nome
+em `CAPTURE_SOURCE` no `.env`).

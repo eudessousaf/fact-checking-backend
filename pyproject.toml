@@ -14,11 +14,11 @@ dependencies = [
     # jsonschema IGNORA o "format" em silêncio.
     "jsonschema[format-nongpl]>=4.23,<5",
     "python-dotenv>=1.0,<2",
-    "httpx>=0.27,<1",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+# httpx: exigido pelo TestClient do FastAPI nos testes do painel.
+dev = ["pytest>=8", "httpx>=0.27,<1"]
 
 [project.scripts]
 factcheck = "factcheck.cli:main"
