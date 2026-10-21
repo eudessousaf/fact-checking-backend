@@ -1,0 +1,29 @@
+# Copie para config/debate.toml (que não vai para o Git) e ajuste.
+# Os nomes NUNCA ficam no código: tudo o que é sobre o debate mora aqui.
+
+[event]
+title = "Debate presidencial — 2º turno"
+broadcaster = "TV Globo"
+timezone = "America/Sao_Paulo"
+# Horário previsto. O início real é informado no painel e é a base dos
+# horários das checagens.
+scheduled_start = "2026-10-23T21:20:00-03:00"
+
+[[candidates]]
+id = "A"
+name = "Luiz Inácio Lula da Silva"
+short_name = "Lula"
+
+[[candidates]]
+id = "B"
+name = "Flávio Bolsonaro"
+short_name = "Flávio Bolsonaro"
+
+[mediator]
+name = "César Tralli"
+
+[publication]
+# Contagem regressiva da fila com veto, em minutos.
+veto_minutes = 3
+# Mínimo de checagens publicadas para o gráfico de um candidato aparecer.
+min_checks_to_display = 8

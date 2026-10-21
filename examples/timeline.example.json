@@ -1,0 +1,406 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-10-23T22:41:10-03:00",
+  "sequence": 42,
+  "environment": "teste",
+  "event": {
+    "title": "EXEMPLO — Debate fictício para teste da página",
+    "broadcaster": "Emissora Exemplo",
+    "scheduled_start": "2026-10-23T21:20:00-03:00",
+    "started_at": "2026-10-23T21:22:30-03:00",
+    "timezone": "America/Sao_Paulo"
+  },
+  "mode": "ao_vivo",
+  "status": "em_andamento",
+  "status_updated_at": "2026-10-23T22:25:00-03:00",
+  "candidates": [
+    {
+      "id": "A",
+      "name": "Candidato Exemplo A",
+      "short_name": "Exemplo A"
+    },
+    {
+      "id": "B",
+      "name": "Candidata Exemplo B",
+      "short_name": "Exemplo B"
+    }
+  ],
+  "stats": {
+    "min_checks_to_display": 8,
+    "by_candidate": [
+      {
+        "candidate_id": "A",
+        "total": 8,
+        "display": true,
+        "VERDADEIRO": {
+          "count": 4,
+          "pct": 50
+        },
+        "NAO_E_BEM_ASSIM": {
+          "count": 2,
+          "pct": 25
+        },
+        "FALSO": {
+          "count": 2,
+          "pct": 25
+        }
+      },
+      {
+        "candidate_id": "B",
+        "total": 3,
+        "display": false,
+        "VERDADEIRO": {
+          "count": 1,
+          "pct": 33
+        },
+        "NAO_E_BEM_ASSIM": {
+          "count": 0,
+          "pct": 0
+        },
+        "FALSO": {
+          "count": 2,
+          "pct": 67
+        }
+      }
+    ]
+  },
+  "items": [
+    {
+      "id": "chk-0010",
+      "state": "publicado",
+      "verdict": "FALSO",
+      "said_at": "2026-10-23T22:40:00-03:00",
+      "candidate_id": "B",
+      "quote": "EXEMPLO 10: afirmação fictícia número 10 sobre a cidade fictícia.",
+      "claim": "Afirmação fictícia número 10.",
+      "explanation": "Texto de exemplo para preencher a linha do tempo.",
+      "indicators": {
+        "source_count": 2,
+        "has_primary_source": true,
+        "has_agency_check": false
+      },
+      "sources": [
+        {
+          "url": "https://example.org/censo",
+          "title": "Censo escolar fictício",
+          "publisher": "Instituto Exemplo",
+          "kind": "primaria"
+        },
+        {
+          "url": "https://example.com/escolas",
+          "title": "Reportagem fictícia sobre escolas",
+          "kind": "imprensa"
+        }
+      ],
+      "published_at": "2026-10-23T22:43:30-03:00"
+    },
+    {
+      "id": "chk-0009",
+      "state": "publicado",
+      "verdict": "VERDADEIRO",
+      "said_at": "2026-10-23T22:38:00-03:00",
+      "candidate_id": "B",
+      "quote": "EXEMPLO 9: afirmação fictícia número 9 sobre a cidade fictícia.",
+      "claim": "Afirmação fictícia número 9.",
+      "explanation": "Texto de exemplo para preencher a linha do tempo.",
+      "indicators": {
+        "source_count": 2,
+        "has_primary_source": true,
+        "has_agency_check": false
+      },
+      "sources": [
+        {
+          "url": "https://example.org/censo",
+          "title": "Censo escolar fictício",
+          "publisher": "Instituto Exemplo",
+          "kind": "primaria"
+        },
+        {
+          "url": "https://example.com/escolas",
+          "title": "Reportagem fictícia sobre escolas",
+          "kind": "imprensa"
+        }
+      ],
+      "published_at": "2026-10-23T22:41:30-03:00"
+    },
+    {
+      "id": "chk-0012",
+      "state": "publicado",
+      "verdict": "FALSO",
+      "said_at": "2026-10-23T22:38:00-03:00",
+      "candidate_id": "A",
+      "quote": "EXEMPLO 12: afirmação fictícia número 12.",
+      "claim": "Afirmação fictícia número 12.",
+      "explanation": "Texto de exemplo para preencher a linha do tempo.",
+      "indicators": {
+        "source_count": 2,
+        "has_primary_source": true,
+        "has_agency_check": false
+      },
+      "sources": [
+        {
+          "url": "https://example.org/censo",
+          "title": "Censo escolar fictício",
+          "publisher": "Instituto Exemplo",
+          "kind": "primaria"
+        },
+        {
+          "url": "https://example.com/escolas",
+          "title": "Reportagem fictícia sobre escolas",
+          "kind": "imprensa"
+        }
+      ],
+      "published_at": "2026-10-23T22:40:30-03:00"
+    },
+    {
+      "id": "chk-0008",
+      "state": "publicado",
+      "verdict": "NAO_E_BEM_ASSIM",
+      "said_at": "2026-10-23T22:36:00-03:00",
+      "candidate_id": "A",
+      "quote": "EXEMPLO 8: afirmação fictícia número 8 sobre a cidade fictícia.",
+      "claim": "Afirmação fictícia número 8.",
+      "explanation": "Texto de exemplo para preencher a linha do tempo.",
+      "indicators": {
+        "source_count": 2,
+        "has_primary_source": true,
+        "has_agency_check": false
+      },
+      "sources": [
+        {
+          "url": "https://example.org/censo",
+          "title": "Censo escolar fictício",
+          "publisher": "Instituto Exemplo",
+          "kind": "primaria"
+        },
+        {
+          "url": "https://example.com/escolas",
+          "title": "Reportagem fictícia sobre escolas",
+          "kind": "imprensa"
+        }
+      ],
+      "published_at": "2026-10-23T22:39:30-03:00",
+      "what_is_off": "Contexto omitido no exemplo fictício."
+    },
+    {
+      "id": "chk-0011",
+      "state": "publicado",
+      "verdict": "VERDADEIRO",
+      "said_at": "2026-10-23T22:36:00-03:00",
+      "candidate_id": "A",
+      "quote": "EXEMPLO 11: afirmação fictícia número 11.",
+      "claim": "Afirmação fictícia número 11.",
+      "explanation": "Texto de exemplo para preencher a linha do tempo.",
+      "indicators": {
+        "source_count": 2,
+        "has_primary_source": true,
+        "has_agency_check": false
+      },
+      "sources": [
+        {
+          "url": "https://example.org/censo",
+          "title": "Censo escolar fictício",
+          "publisher": "Instituto Exemplo",
+          "kind": "primaria"
+        },
+        {
+          "url": "https://example.com/escolas",
+          "title": "Reportagem fictícia sobre escolas",
+          "kind": "imprensa"
+        }
+      ],
+      "published_at": "2026-10-23T22:38:30-03:00"
+    },
+    {
+      "id": "chk-0007",
+      "state": "publicado",
+      "verdict": "VERDADEIRO",
+      "said_at": "2026-10-23T22:34:00-03:00",
+      "candidate_id": "A",
+      "quote": "EXEMPLO 7: afirmação fictícia número 7 sobre a cidade fictícia.",
+      "claim": "Afirmação fictícia número 7.",
+      "explanation": "Texto de exemplo para preencher a linha do tempo.",
+      "indicators": {
+        "source_count": 2,
+        "has_primary_source": true,
+        "has_agency_check": false
+      },
+      "sources": [
+        {
+          "url": "https://example.org/censo",
+          "title": "Censo escolar fictício",
+          "publisher": "Instituto Exemplo",
+          "kind": "primaria"
+        },
+        {
+          "url": "https://example.com/escolas",
+          "title": "Reportagem fictícia sobre escolas",
+          "kind": "imprensa"
+        }
+      ],
+      "published_at": "2026-10-23T22:37:30-03:00"
+    },
+    {
+      "id": "chk-0006",
+      "state": "publicado",
+      "verdict": "FALSO",
+      "said_at": "2026-10-23T22:32:00-03:00",
+      "candidate_id": "A",
+      "quote": "EXEMPLO 6: afirmação fictícia número 6 sobre a cidade fictícia.",
+      "claim": "Afirmação fictícia número 6.",
+      "explanation": "Texto de exemplo para preencher a linha do tempo.",
+      "indicators": {
+        "source_count": 2,
+        "has_primary_source": true,
+        "has_agency_check": false
+      },
+      "sources": [
+        {
+          "url": "https://example.org/censo",
+          "title": "Censo escolar fictício",
+          "publisher": "Instituto Exemplo",
+          "kind": "primaria"
+        },
+        {
+          "url": "https://example.com/escolas",
+          "title": "Reportagem fictícia sobre escolas",
+          "kind": "imprensa"
+        }
+      ],
+      "published_at": "2026-10-23T22:35:30-03:00"
+    },
+    {
+      "id": "chk-0005",
+      "state": "publicado",
+      "verdict": "VERDADEIRO",
+      "said_at": "2026-10-23T22:30:00-03:00",
+      "candidate_id": "A",
+      "quote": "EXEMPLO 5: afirmação fictícia número 5 sobre a cidade fictícia.",
+      "claim": "Afirmação fictícia número 5.",
+      "explanation": "Texto de exemplo para preencher a linha do tempo.",
+      "indicators": {
+        "source_count": 2,
+        "has_primary_source": true,
+        "has_agency_check": false
+      },
+      "sources": [
+        {
+          "url": "https://example.org/censo",
+          "title": "Censo escolar fictício",
+          "publisher": "Instituto Exemplo",
+          "kind": "primaria"
+        },
+        {
+          "url": "https://example.com/escolas",
+          "title": "Reportagem fictícia sobre escolas",
+          "kind": "imprensa"
+        }
+      ],
+      "published_at": "2026-10-23T22:33:30-03:00"
+    },
+    {
+      "id": "chk-0004",
+      "state": "removido",
+      "said_at": "2026-10-23T22:18:40-03:00",
+      "candidate_id": "B",
+      "removed_at": "2026-10-23T22:27:02-03:00",
+      "note": "Checagem removida pela equipe para revisão."
+    },
+    {
+      "id": "chk-0003",
+      "state": "publicado",
+      "verdict": "NAO_E_BEM_ASSIM",
+      "said_at": "2026-10-23T22:11:05-03:00",
+      "candidate_id": "A",
+      "quote": "EXEMPLO: a produção de bananas da cidade fictícia dobrou no meu mandato.",
+      "claim": "A produção de bananas da cidade fictícia dobrou entre 2020 e 2024.",
+      "explanation": "Texto de exemplo. A produção cresceu, mas 40%, não 100%. O dado vem de uma série fictícia usada só para testar a página.",
+      "what_is_off": "Exagero: o crescimento foi de 40%, não de 100%.",
+      "indicators": {
+        "source_count": 2,
+        "has_primary_source": true,
+        "has_agency_check": false
+      },
+      "sources": [
+        {
+          "url": "https://example.org/fonte-primaria",
+          "title": "Série fictícia de produção agrícola",
+          "publisher": "Instituto Exemplo",
+          "kind": "primaria"
+        },
+        {
+          "url": "https://example.com/reportagem",
+          "title": "Reportagem fictícia sobre a safra",
+          "publisher": "Jornal Exemplo",
+          "kind": "imprensa"
+        }
+      ],
+      "published_at": "2026-10-23T22:15:40-03:00"
+    },
+    {
+      "id": "chk-0002",
+      "state": "publicado",
+      "verdict": "FALSO",
+      "said_at": "2026-10-23T21:58:12-03:00",
+      "candidate_id": "B",
+      "quote": "EXEMPLO: a ponte fictícia foi inaugurada em 1990.",
+      "claim": "A ponte fictícia foi inaugurada em 1990.",
+      "explanation": "Texto de exemplo. Os registros fictícios indicam inauguração em 2001.",
+      "indicators": {
+        "source_count": 3,
+        "has_primary_source": true,
+        "has_agency_check": true
+      },
+      "sources": [
+        {
+          "url": "https://example.org/diario-oficial",
+          "title": "Diário Oficial fictício",
+          "publisher": "Exemplo",
+          "kind": "primaria"
+        },
+        {
+          "url": "https://example.net/checagem",
+          "title": "Checagem fictícia",
+          "publisher": "Agência Exemplo",
+          "kind": "agencia"
+        },
+        {
+          "url": "https://example.com/arquivo",
+          "title": "Arquivo fictício",
+          "kind": "outra"
+        }
+      ],
+      "published_at": "2026-10-23T22:02:30-03:00",
+      "updated_at": "2026-10-23T22:06:00-03:00"
+    },
+    {
+      "id": "chk-0001",
+      "state": "publicado",
+      "verdict": "VERDADEIRO",
+      "said_at": "2026-10-23T21:40:00-03:00",
+      "candidate_id": "A",
+      "quote": "EXEMPLO: a cidade fictícia tem 12 escolas técnicas.",
+      "claim": "A cidade fictícia tem 12 escolas técnicas.",
+      "explanation": "Texto de exemplo. O cadastro fictício lista 12 escolas técnicas em funcionamento.",
+      "indicators": {
+        "source_count": 2,
+        "has_primary_source": true,
+        "has_agency_check": false
+      },
+      "sources": [
+        {
+          "url": "https://example.org/censo",
+          "title": "Censo escolar fictício",
+          "publisher": "Instituto Exemplo",
+          "kind": "primaria"
+        },
+        {
+          "url": "https://example.com/escolas",
+          "title": "Reportagem fictícia sobre escolas",
+          "kind": "imprensa"
+        }
+      ],
+      "published_at": "2026-10-23T21:44:10-03:00"
+    }
+  ]
+}

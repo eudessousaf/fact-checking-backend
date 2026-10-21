@@ -1,0 +1,223 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://checagem.local/schemas/timeline.schema.json",
+  "title": "timeline.json — linha do tempo pública de checagens",
+  "description": "Contrato entre fact-checking-backend (que gera e valida) e fact-checking-frontend (que lê). Qualquer mudança aqui é feita nos dois repositórios no mesmo passo; o arquivo é copiado byte a byte.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "sequence", "environment", "event", "mode", "status", "candidates", "stats", "items"],
+  "properties": {
+    "schema_version": {
+      "description": "Versão do contrato. Muda de MAIOR quando um campo obrigatório muda de sentido ou some.",
+      "const": "1.0"
+    },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "sequence": {
+      "description": "Contador que só cresce. O leitor descarta um arquivo com sequence menor do que o que já mostra (cache antigo da CDN).",
+      "type": "integer",
+      "minimum": 0
+    },
+    "environment": {
+      "description": "teste publica numa página separada da de produção; a página mostra uma faixa quando não é produção.",
+      "enum": ["producao", "teste"]
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "broadcaster", "timezone"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "broadcaster": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "scheduled_start": { "type": "string", "format": "date-time" },
+        "started_at": {
+          "description": "Início real informado pelo operador. É a base dos horários das checagens.",
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "timezone": { "type": "string", "minLength": 1, "maxLength": 64 }
+      }
+    },
+    "mode": {
+      "description": "ao_vivo: checagem durante a transmissão. pos_debate: feita depois, com base na gravação — a página mostra o aviso correspondente.",
+      "enum": ["ao_vivo", "pos_debate"]
+    },
+    "status": {
+      "enum": ["aguardando", "em_andamento", "intervalo", "encerrado"]
+    },
+    "status_updated_at": { "type": "string", "format": "date-time" },
+    "candidates": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "$ref": "#/$defs/candidate_id" },
+          "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "short_name": { "type": "string", "minLength": 1, "maxLength": 40 },
+          "party": { "type": "string", "maxLength": 40 }
+        }
+      }
+    },
+    "stats": {
+      "description": "Calculado no backend; a página NÃO recalcula. Conta só itens com state=publicado.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min_checks_to_display", "by_candidate"],
+      "properties": {
+        "min_checks_to_display": { "type": "integer", "minimum": 1 },
+        "by_candidate": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/candidate_stats" }
+        }
+      }
+    },
+    "items": {
+      "description": "Mais recente primeiro.",
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/published_item" },
+          { "$ref": "#/$defs/removed_item" }
+        ]
+      }
+    },
+    "older_items_url": {
+      "description": "Preenchido só quando o arquivo é dividido (acima de ~200 KB): caminho relativo do arquivo completo, carregado sob demanda.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*\\.json$"
+    }
+  },
+  "$defs": {
+    "candidate_id": { "enum": ["A", "B"] },
+    "verdict": {
+      "description": "Os três únicos títulos públicos. SEM_EVIDENCIA é status interno e não pode aparecer aqui.",
+      "enum": ["VERDADEIRO", "FALSO", "NAO_E_BEM_ASSIM"]
+    },
+    "count_pct": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "pct"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "pct": {
+          "description": "Inteiro de 0 a 100; os três somam 100 quando total > 0 (maior resto).",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "candidate_stats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidate_id", "total", "display", "VERDADEIRO", "NAO_E_BEM_ASSIM", "FALSO"],
+      "properties": {
+        "candidate_id": { "$ref": "#/$defs/candidate_id" },
+        "total": { "type": "integer", "minimum": 0 },
+        "display": {
+          "description": "true só quando total >= min_checks_to_display. Decidido no backend para página e painel mostrarem o mesmo.",
+          "type": "boolean"
+        },
+        "VERDADEIRO": { "$ref": "#/$defs/count_pct" },
+        "NAO_E_BEM_ASSIM": { "$ref": "#/$defs/count_pct" },
+        "FALSO": { "$ref": "#/$defs/count_pct" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "title", "kind"],
+      "properties": {
+        "url": { "type": "string", "format": "uri", "pattern": "^https?://", "maxLength": 2000 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "publisher": { "type": "string", "maxLength": 120 },
+        "kind": {
+          "description": "primaria: IBGE, Ipea, BC, Tesouro, Transparência, DOU, Câmara, Senado, TSE etc. agencia: checagem já publicada por agência reconhecida.",
+          "enum": ["primaria", "agencia", "imprensa", "outra"]
+        }
+      }
+    },
+    "published_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "state", "verdict", "said_at", "candidate_id", "quote", "claim", "explanation", "indicators", "sources", "published_at"],
+      "properties": {
+        "id": { "$ref": "#/$defs/item_id" },
+        "state": { "const": "publicado" },
+        "verdict": { "$ref": "#/$defs/verdict" },
+        "said_at": {
+          "description": "Horário em que a fala aconteceu no debate, não o do processamento.",
+          "type": "string",
+          "format": "date-time"
+        },
+        "candidate_id": { "$ref": "#/$defs/candidate_id" },
+        "quote": {
+          "description": "Trecho literal da transcrição automática.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "claim": {
+          "description": "Afirmação reformulada de forma neutra e verificável.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "explanation": {
+          "description": "Até 3 frases, tom neutro. O limite de frases é conferido no backend.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 700
+        },
+        "what_is_off": {
+          "description": "Obrigatório em NAO_E_BEM_ASSIM: o que está errado ou faltando (exagero, número diferente, contexto omitido).",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "indicators": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source_count", "has_primary_source", "has_agency_check"],
+          "properties": {
+            "source_count": { "type": "integer", "minimum": 2 },
+            "has_primary_source": { "type": "boolean" },
+            "has_agency_check": { "type": "boolean" }
+          }
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 8,
+          "items": { "$ref": "#/$defs/source" }
+        },
+        "published_at": { "type": "string", "format": "date-time" },
+        "updated_at": {
+          "description": "Presente quando a equipe editou o item depois de publicado.",
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "if": { "properties": { "verdict": { "const": "NAO_E_BEM_ASSIM" } } },
+      "then": { "required": ["what_is_off"] }
+    },
+    "removed_item": {
+      "description": "Checagem despublicada. Continua na lista para não sumir em silêncio, mas SEM o conteúdo retirado.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "state", "said_at", "removed_at"],
+      "properties": {
+        "id": { "$ref": "#/$defs/item_id" },
+        "state": { "const": "removido" },
+        "said_at": { "type": "string", "format": "date-time" },
+        "candidate_id": { "$ref": "#/$defs/candidate_id" },
+        "removed_at": { "type": "string", "format": "date-time" },
+        "note": { "type": "string", "maxLength": 300 }
+      }
+    },
+    "item_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{2,63}$" }
+  }
+}

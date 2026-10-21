@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://checagem.local/schemas/ads.schema.json",
+  "title": "ads.json — configuração do espaço publicitário",
+  "description": "Controlado pelo painel e enviado à mesma CDN da página. Desligado por padrão. O rótulo 'Publicidade' é imposto pela página, não é campo.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "updated_at", "active"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "updated_at": { "type": "string", "format": "date-time" },
+    "active": { "type": "boolean" },
+    "format": { "enum": ["faixa_topo", "faixa_rodape", "modal"] },
+    "image_path": {
+      "description": "Caminho RELATIVO na mesma CDN (ex.: ads/banner-728x90.webp). URL absoluta é recusada de propósito: a imagem não pode vir de terceiros.",
+      "type": "string",
+      "pattern": "^ads/[A-Za-z0-9][A-Za-z0-9._-]*\\.(webp|png|jpg|jpeg|avif)$"
+    },
+    "image_width": { "type": "integer", "minimum": 1, "maximum": 4000 },
+    "image_height": { "type": "integer", "minimum": 1, "maximum": 4000 },
+    "link_url": { "type": "string", "format": "uri", "pattern": "^https://", "maxLength": 2000 },
+    "alt_text": { "type": "string", "minLength": 3, "maxLength": 200 },
+    "advertiser": {
+      "description": "Obrigatório. Proibido anúncio de candidato, partido, coligação ou conteúdo político-eleitoral (conferido pelo operador no painel).",
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 120
+    },
+    "modal_delay_seconds": { "type": "integer", "minimum": 3, "maximum": 120 }
+  },
+  "if": { "properties": { "active": { "const": true } }, "required": ["active"] },
+  "then": { "required": ["format", "image_path", "image_width", "image_height", "link_url", "alt_text", "advertiser"] }
+}

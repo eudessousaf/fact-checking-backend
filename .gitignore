@@ -1,0 +1,19 @@
+# Segredos: só no .env local do operador, nunca no repositório.
+.env
+.env.*
+!.env.example
+
+# Dados de execução: áudio, banco, relatórios, timeline gerado.
+data/
+*.wav
+*.flac
+*.sqlite
+*.sqlite-*
+*.db
+
+config/debate.toml
+
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/

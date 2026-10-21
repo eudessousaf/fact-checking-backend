@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "updated_at": "2026-10-23T20:00:00-03:00",
+  "active": true,
+  "format": "faixa_rodape",
+  "image_path": "ads/exemplo-728x90.webp",
+  "image_width": 728,
+  "image_height": 90,
+  "link_url": "https://example.com/",
+  "alt_text": "Anúncio de exemplo",
+  "advertiser": "Anunciante Exemplo Ltda.",
+  "modal_delay_seconds": 8
+}
