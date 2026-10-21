@@ -57,6 +57,18 @@ coloque em outro arquivo nem em mensagem de commit.
 Use **dois terminais**, os dois dentro da pasta do projeto e com
 `source .venv/bin/activate`.
 
+**Antes de capturar, com o Globoplay já tocando**, monte a saída virtual
+"Debate" (precisa ser refeito depois de reiniciar o computador):
+
+```bash
+factcheck audio-setup            # cria "Debate", a cópia para ouvir, e move o navegador
+factcheck audio-setup --desfazer # remove tudo
+```
+
+> **Não mexa no volume do sistema nem no do player do Globoplay**: os dois
+> silenciam a gravação (medido em 21/10/2026). Para não ouvir, use o botão
+> "Silenciar meu som" do painel — ele cala só a cópia para os alto-falantes.
+
 ```bash
 # 1. Qual servidor de som e quais saídas existem
 factcheck capture --list-sources

@@ -38,3 +38,18 @@ def test_status_never_started_then_stale(settings):
     r = client.get("/api/capture/status", auth=("x", "segredo")).json()
     # Processo que parou de dar notícia é "parado", não "ouvindo".
     assert r["stale"] is True
+
+
+def test_audio_actions_require_panel_header(settings):
+    from tests.test_routing import FakePactl
+    from factcheck.capture.routing import AudioRouting
+
+    routing = AudioRouting(FakePactl())
+    routing.setup()
+    client = TestClient(create_app(settings, routing=routing))
+    auth = ("x", "segredo")
+    # Sem o cabeçalho: é o que um formulário de outro site conseguiria mandar.
+    assert client.post("/api/audio/listen", json={"on": False}, auth=auth).status_code == 403
+    r = client.post("/api/audio/listen", json={"on": False}, auth=auth, headers={"X-Painel": "1"})
+    assert r.status_code == 200 and r.json()["loopback_muted"] is True
+    assert client.get("/api/audio/route", auth=auth).json()["ok"] is True

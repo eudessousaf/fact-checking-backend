@@ -87,3 +87,56 @@
 
 Mande: a saída do passo 1, o nível típico com o vídeo tocando, os níveis do
 passo 6, e se o passo 8 soou bem.
+
+### Resultado do teste da etapa 2 (21/10/2026, máquina do Eudes)
+
+Ubuntu com PipeWire 1.6.2, Python 3.14, ffmpeg 8.0. 32 testes passando lá.
+
+| pergunta | resultado medido |
+|---|---|
+| a captura lê o som do sistema? | sim — bipe a -17,6 dB pela saída interna |
+| o som do Globoplay passa (DRM)? | sim — blocos entre -21 e -22 dBFS |
+| alerta de silêncio | dispara aos 20 s e some quando o som volta |
+| volume do **sistema** zerado | **silencia a gravação**: o Chrome corta o próprio som quando a saída padrão fica muda (Globoplay a -91 dB; bipe direto no "Debate", a -21 dB) |
+| volume do **player** zerado | silencia a gravação — sem conserto, o som sai vazio dele |
+| silenciar só a cópia para os alto-falantes | gravação intacta (-26 dB com o operador sem ouvir) |
+| monitor do fone Bluetooth | não testado; deixou de importar com a saída virtual |
+
+Três achados durante o teste, que viraram regra:
+
+- O `pactl` em português escreve "Nome do servidor:"; o código já força
+  `LC_ALL=C`, mas comandos manuais também precisam.
+- Faltavam `ffmpeg`, `pulseaudio-utils` e `python3.14-venv` no Ubuntu.
+- O operador PRECISA poder não ouvir durante o intervalo e voltar a ouvir.
+  Isso levou à saída virtual abaixo.
+
+## Etapa 2b — saída virtual "Debate" (21/10/2026)
+
+O plano dizia "não precisa de cabo virtual". Para o uso real, precisa: sem
+ela, o único jeito de não ouvir é zerar um volume, e os dois volumes
+disponíveis silenciam a gravação.
+
+**Feito**
+
+- `factcheck audio-setup`: cria a saída "Debate" e a cópia para os
+  alto-falantes, move o navegador para o "Debate". Pode rodar quantas vezes
+  quiser; `--desfazer` remove. A cópia aponta para a saída real POR NOME —
+  apontar para "a padrão" criaria um laço se a padrão virasse o "Debate".
+- A captura usa `debate.monitor` sozinha quando ele existe, e avisa quando
+  não existe.
+- Painel: estado da rota (saída, cópia, navegador no "Debate"), alerta se o
+  navegador sair da rota (ex.: página recarregada), botão "Silenciar meu
+  som / Ouvir de novo", e a regra fixa na tela.
+- Toda ação do painel exige o cabeçalho `X-Painel`: um site qualquer aberto
+  no mesmo navegador não consegue acionar o painel.
+- O painel grava log em arquivo (`data/logs/panel_*.log`).
+
+**Teste na máquina do Eudes**
+
+1. Reinicie nada; se a rota manual de hoje ainda existir, rode primeiro
+   `factcheck audio-setup --desfazer`.
+2. Globoplay tocando → `factcheck audio-setup`. Esperado: "Rota pronta".
+3. `factcheck panel` e `factcheck capture` (sem `--source`): a captura deve
+   dizer `capturando de debate.monitor`.
+4. No painel, "Silenciar meu som" por 30 s: você não ouve, e o painel
+   continua em OUVINDO, sem alerta de silêncio.

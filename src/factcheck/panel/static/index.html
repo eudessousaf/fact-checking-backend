@@ -16,6 +16,13 @@
   .meter > div { height: 100%; width: 0; background: var(--ok); transition: width .2s; }
   dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 12px 0 0; }
   dt { color: var(--muted); }
+  section + section { margin-top: 16px; }
+  h2 { font-size: 1rem; margin: 0 0 8px; }
+  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  button { font: inherit; font-weight: 600; padding: 10px 16px; border-radius: 6px; border: 1px solid #8c959f;
+           background: #fff; cursor: pointer; }
+  button[aria-pressed="true"] { background: #1f2328; color: #fff; }
+  .rule { margin-top: 12px; padding: 10px; border-radius: 6px; background: #fff8c5; font-size: .95rem; }
   .alert { margin-top: 12px; padding: 10px; border-radius: 6px; background: #fff1e5; color: var(--bad);
            font-weight: 600; display: none; }
 </style>
@@ -33,6 +40,22 @@
       <dt>Captura nº</dt><dd id="run">—</dd>
     </dl>
     <div id="alert" class="alert"></div>
+  </section>
+  <section class="card" aria-live="polite">
+    <h2>Saída de som</h2>
+    <div id="route" class="state">—</div>
+    <dl>
+      <dt>Saída "Debate"</dt><dd id="r-sink">—</dd>
+      <dt>Cópia para ouvir</dt><dd id="r-loop">—</dd>
+      <dt>Navegador no "Debate"</dt><dd id="r-browser">—</dd>
+    </dl>
+    <div class="row" style="margin-top:12px">
+      <button id="listen" type="button" aria-pressed="false">Silenciar meu som</button>
+      <span id="listen-msg"></span>
+    </div>
+    <div class="rule"><strong>Não mexa no volume do sistema nem no do player do Globoplay</strong> —
+      os dois silenciam a gravação. Para não ouvir, use o botão acima: ele cala só o seu som.</div>
+    <div id="route-alert" class="alert"></div>
   </section>
 </main>
 <script>
@@ -71,8 +94,55 @@ async function tick() {
     $("alert").textContent = "O painel não conseguiu ler o status (o painel caiu?).";
   }
 }
+function renderRoute(r) {
+  const yes = (b) => b ? "sim" : "NÃO";
+  let label = "ROTA OK", cls = "ok", alert = "";
+  if (r.error) { label = "ROTA DESCONHECIDA"; cls = "bad"; alert = r.error; }
+  else if (!r.virtual_sink || !r.loopback) { label = "ROTA NÃO MONTADA"; cls = "bad";
+    alert = "Rode `factcheck audio-setup` num terminal."; }
+  else if (r.browsers_total === 0) { label = "NAVEGADOR SEM SOM"; cls = "warn";
+    alert = "Nenhum navegador tocando agora. Se o Globoplay está tocando, rode `factcheck audio-setup` de novo."; }
+  else if (r.browsers_on_debate < r.browsers_total) { label = "NAVEGADOR FORA DA ROTA"; cls = "bad";
+    alert = "O navegador está tocando direto nos alto-falantes e a gravação não ouve. Rode `factcheck audio-setup` de novo."; }
+  $("route").textContent = label;
+  $("route").className = "state " + cls;
+  $("r-sink").textContent = r.error ? "—" : yes(r.virtual_sink);
+  $("r-loop").textContent = r.error ? "—" : (r.loopback ? (r.loopback_muted ? "sim (silenciada)" : "sim") : "NÃO");
+  $("r-browser").textContent = r.error ? "—" : `${r.browsers_on_debate} de ${r.browsers_total}`;
+  const muted = r.loopback_muted === true;
+  $("listen").textContent = muted ? "Ouvir de novo" : "Silenciar meu som";
+  $("listen").setAttribute("aria-pressed", String(muted));
+  $("listen").disabled = !r.loopback;
+  $("route-alert").textContent = alert;
+  $("route-alert").style.display = alert ? "block" : "none";
+}
+let lastRoute = null;
+async function tickRoute() {
+  try {
+    const r = await fetch("/api/audio/route", { cache: "no-store" });
+    if (!r.ok) throw new Error(r.status);
+    lastRoute = await r.json();
+    renderRoute(lastRoute);
+  } catch (e) {
+    renderRoute({ error: "O painel não conseguiu ler a rota de som." });
+  }
+}
+$("listen").addEventListener("click", async () => {
+  const on = lastRoute && lastRoute.loopback_muted === true;
+  $("listen-msg").textContent = "…";
+  try {
+    // X-Painel: sem ele o servidor recusa (proteção contra cliques vindos de outros sites).
+    const r = await fetch("/api/audio/listen", { method: "POST",
+      headers: { "Content-Type": "application/json", "X-Painel": "1" }, body: JSON.stringify({ on }) });
+    const body = await r.json();
+    if (!r.ok) throw new Error(body.detail || r.status);
+    lastRoute = body; renderRoute(body); $("listen-msg").textContent = "";
+  } catch (e) { $("listen-msg").textContent = "Falhou: " + e.message; }
+});
 tick();
+tickRoute();
 setInterval(tick, 1000);
+setInterval(tickRoute, 3000);
 </script>
 </body>
 </html>

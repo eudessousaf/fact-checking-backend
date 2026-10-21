@@ -30,7 +30,7 @@ class MonitorSource:
     is_default: bool
 
 
-def _pactl(*args: str) -> str:
+def run_pactl(*args: str) -> str:
     if shutil.which("pactl") is None:
         raise AudioSetupError(
             "comando 'pactl' não encontrado. Instale com: sudo apt install pulseaudio-utils "
@@ -107,15 +107,16 @@ def parse_sources(list_output: str, default_sink: str | None) -> list[MonitorSou
 
 
 def detect_server() -> str:
-    return describe_server(parse_server_name(_pactl("info")))
+    return describe_server(parse_server_name(run_pactl("info")))
 
 
 def list_monitor_sources() -> list[MonitorSource]:
-    info = _pactl("info")
-    return parse_sources(_pactl("list", "sources"), parse_default_sink(info))
+    info = run_pactl("info")
+    return parse_sources(run_pactl("list", "sources"), parse_default_sink(info))
 
 
-def resolve_monitor(requested: str | None) -> MonitorSource:
+def resolve_monitor(requested: str | None, prefer: str | None = None) -> MonitorSource:
+    """Escolhe o monitor: o pedido explicitamente > o preferido, se existir > o padrão."""
     sources = list_monitor_sources()
     if not sources:
         raise AudioSetupError("nenhum monitor de saída de som encontrado (pactl list sources).")
@@ -125,6 +126,10 @@ def resolve_monitor(requested: str | None) -> MonitorSource:
                 return s
         names = "\n  ".join(s.name for s in sources)
         raise AudioSetupError(f"fonte {requested!r} não existe. Disponíveis:\n  {names}")
+    if prefer:
+        for s in sources:
+            if s.name == prefer:
+                return s
     default = next((s for s in sources if s.is_default), None)
     if default is None:
         raise AudioSetupError(

@@ -9,16 +9,21 @@ estado de intervalo e fila entram na etapa 5, nesta mesma aplicação.
 # resolvê-las, e passa a tratar as credenciais como parâmetro comum — a rota
 # respondia 422 em vez de pedir senha.
 
+import logging
 import secrets
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from pydantic import BaseModel
 
+from factcheck.capture.routing import AudioRouting
 from factcheck.capture.runner import now_local
+from factcheck.capture.sources import AudioSetupError
 from factcheck.config import Settings
 from factcheck.db import connect
 
@@ -26,9 +31,22 @@ STATIC = Path(__file__).parent / "static"
 # A captura grava status a cada 1 s. Sem atualização por 5 s, o processo de
 # captura caiu ou travou — e isso é diferente de silêncio no áudio.
 STALE_AFTER_S = 5.0
+# O status da rota custa 4 chamadas ao pactl; o painel consulta a cada 1 s.
+ROUTE_CACHE_S = 3.0
+# Cabeçalho exigido em toda ação que muda algo. Um site qualquer aberto no
+# mesmo navegador consegue mandar um formulário para 127.0.0.1 — e o navegador
+# anexaria a senha já digitada —, mas não consegue pôr um cabeçalho próprio
+# sem a permissão de CORS, que este painel nunca dá.
+ACTION_HEADER = "X-Painel"
+
+log = logging.getLogger("factcheck.panel")
 
 
-def create_app(settings: Settings) -> FastAPI:
+class ListenRequest(BaseModel):
+    on: bool
+
+
+def create_app(settings: Settings, routing: AudioRouting | None = None) -> FastAPI:
     if not settings.panel_password:
         raise RuntimeError("PANEL_PASSWORD vazio no .env: o painel não sobe sem senha.")
 
@@ -43,7 +61,24 @@ def create_app(settings: Settings) -> FastAPI:
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "senha incorreta",
                                 headers={"WWW-Authenticate": 'Basic realm="painel"'})
 
+    def require_action_header(request: Request) -> None:
+        if request.headers.get(ACTION_HEADER) != "1":
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "ação recusada: origem não é o painel")
+
     auth = [Depends(require_auth)]
+    action = [Depends(require_auth), Depends(require_action_header)]
+    routing = routing or AudioRouting()
+    route_cache: dict[str, Any] = {"at": 0.0, "data": None}
+
+    def route_status(force: bool = False) -> dict[str, Any]:
+        if not force and route_cache["data"] is not None and time.monotonic() - route_cache["at"] < ROUTE_CACHE_S:
+            return route_cache["data"]
+        try:
+            data = routing.status().as_dict()
+        except AudioSetupError as exc:
+            data = {"ok": False, "error": str(exc)}
+        route_cache.update(at=time.monotonic(), data=data)
+        return data
 
     @app.get("/", response_class=HTMLResponse, dependencies=auth)
     def index() -> str:
@@ -57,6 +92,19 @@ def create_app(settings: Settings) -> FastAPI:
         finally:
             conn.close()
         return build_capture_status(row, settings.silence_alert_seconds)
+
+    @app.get("/api/audio/route", dependencies=auth)
+    def audio_route() -> dict[str, Any]:
+        return route_status()
+
+    @app.post("/api/audio/listen", dependencies=action)
+    def audio_listen(body: ListenRequest) -> dict[str, Any]:
+        try:
+            routing.set_listening(body.on)
+        except AudioSetupError as exc:
+            raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+        log.info("operador: som do operador %s", "ligado" if body.on else "silenciado")
+        return route_status(force=True)
 
     return app
 

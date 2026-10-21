@@ -74,10 +74,16 @@ def cmd_capture(args: argparse.Namespace) -> int:
         sources.check_ffmpeg(require_pulse=False)
         spec = SourceSpec("file", str(path), realtime=args.realtime, start_s=args.start)
     else:
+        from factcheck.capture.routing import VIRTUAL_MONITOR
+
         sources.check_ffmpeg(require_pulse=True)
         server = sources.detect_server()
-        monitor = sources.resolve_monitor(args.source or settings.capture_source)
+        monitor = sources.resolve_monitor(args.source or settings.capture_source,
+                                          prefer=VIRTUAL_MONITOR)
         log.info("servidor de som: %s; capturando de %s (%s)", server, monitor.name, monitor.description)
+        if monitor.name != VIRTUAL_MONITOR:
+            log.warning("a saída virtual 'Debate' não está montada (factcheck audio-setup). "
+                        "Assim, zerar o volume do sistema ou do player SILENCIA a captura.")
         spec = SourceSpec("pulse", monitor.name)
 
     params = CaptureParams(
@@ -98,6 +104,21 @@ def cmd_capture(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_audio_setup(args: argparse.Namespace) -> int:
+    from factcheck.capture.routing import AudioRouting
+
+    routing = AudioRouting()
+    actions = routing.teardown() if args.desfazer else routing.setup()
+    for a in actions:
+        print(f"  - {a}")
+    if not args.desfazer:
+        st = routing.status()
+        print("\nRota pronta." if st.ok else "\nATENÇÃO: a rota ficou incompleta (veja acima).")
+        print("Regra do dia: NÃO mexa no volume do sistema nem no do player do Globoplay.")
+        print("Para silenciar só o seu som, use o botão do painel.")
+    return 0
+
+
 def cmd_panel(_args: argparse.Namespace) -> int:
     import uvicorn
 
@@ -112,6 +133,10 @@ def cmd_panel(_args: argparse.Namespace) -> int:
         loopback = settings.panel_host == "localhost"
     if not loopback:
         raise ConfigError(f"PANEL_HOST={settings.panel_host} não é localhost; o painel só roda em 127.0.0.1")
+    from factcheck.capture.runner import now_local
+
+    # Tudo o que o operador faz no painel fica no arquivo, não só na tela.
+    setup_logging(settings.data_dir / "logs" / f"panel_{now_local():%Y%m%d_%H%M%S}.log")
     app = create_app(settings)
     log.info("painel em http://%s:%d (usuário: qualquer; senha: PANEL_PASSWORD)",
              settings.panel_host, settings.panel_port)
@@ -137,6 +162,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--realtime", action="store_true", help="com --file: lê no ritmo real, como ao vivo")
     p.add_argument("--start", type=float, default=0.0, help="com --file: começa neste segundo")
     p.set_defaults(func=cmd_capture)
+
+    p = sub.add_parser("audio-setup", help="monta a saída virtual 'Debate' e move o navegador para ela")
+    p.add_argument("--desfazer", action="store_true", help="remove a saída virtual e a cópia")
+    p.set_defaults(func=cmd_audio_setup)
 
     p = sub.add_parser("panel", help="abre o painel do operador (só localhost)")
     p.set_defaults(func=cmd_panel)
