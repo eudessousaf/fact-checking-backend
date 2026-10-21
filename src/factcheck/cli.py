@@ -127,6 +127,54 @@ def cmd_audio_setup(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_transcribe_probe(args: argparse.Namespace) -> int:
+    """Manda UM arquivo para o provedor e mostra a resposta crua.
+
+    Existe porque o formato da resposta não pôde ser conferido na nuvem: o
+    resto da etapa 3 só é escrito depois de ver isto funcionando de verdade.
+    """
+    import json
+
+    from factcheck.capture.runner import now_local
+    from factcheck.transcription.base import SpeakerReference, TranscriptionError
+    from factcheck.transcription.openai_diarize import OpenAIDiarizeTranscriber
+
+    settings = load_settings()
+    audio = Path(args.file).expanduser()
+    if not audio.exists():
+        raise ConfigError(f"arquivo não encontrado: {audio}")
+    refs = []
+    for item in args.ref or []:
+        name, sep, path = item.partition("=")
+        if not sep or not name or not Path(path).expanduser().exists():
+            raise ConfigError(f"--ref precisa ser NOME=arquivo.wav existente, veio {item!r}")
+        refs.append(SpeakerReference(name.strip(), Path(path).expanduser()))
+
+    t = OpenAIDiarizeTranscriber(settings.openai_api_key, settings.transcription_model,
+                                 settings.transcription_language)
+    started = now_local()
+    try:
+        result = t.transcribe(audio, refs)
+    except TranscriptionError as exc:
+        log.error("%s", exc)
+        return 1
+    finally:
+        t.close()
+    elapsed = (now_local() - started).total_seconds()
+
+    out_dir = settings.data_dir / "probes"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    raw_path = out_dir / f"{audio.stem}_{started:%H%M%S}.json"
+    raw_path.write_text(json.dumps(result.raw, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    print(f"\n{len(result.segments)} falas em {elapsed:.1f} s de espera:\n")
+    for seg in result.segments:
+        print(f"  [{seg.start_s:6.1f}–{seg.end_s:6.1f}] {seg.speaker:>10}: {seg.text}")
+    print(f"\nuso informado pela OpenAI: {json.dumps(result.usage, ensure_ascii=False) or '(nenhum)'}")
+    print(f"resposta crua completa em: {raw_path}")
+    return 0
+
+
 def cmd_panel(_args: argparse.Namespace) -> int:
     import uvicorn
 
@@ -174,6 +222,12 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("audio-setup", help="monta a saída virtual 'Debate' e move o navegador para ela")
     p.add_argument("--desfazer", action="store_true", help="remove a saída virtual e a cópia")
     p.set_defaults(func=cmd_audio_setup)
+
+    p = sub.add_parser("transcribe-probe", help="transcreve UM arquivo e mostra a resposta crua")
+    p.add_argument("file", help="arquivo de áudio (ex.: um bloco de data/audio/run_NNNN/chunks/)")
+    p.add_argument("--ref", action="append", metavar="NOME=arquivo.wav",
+                   help="voz de referência (2–10 s); repita para cada pessoa, até 4")
+    p.set_defaults(func=cmd_transcribe_probe)
 
     p = sub.add_parser("panel", help="abre o painel do operador (só localhost)")
     p.set_defaults(func=cmd_panel)

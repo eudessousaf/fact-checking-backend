@@ -54,6 +54,9 @@ class Settings:
     silence_threshold_dbfs: float
     budget_warn_usd: float
     budget_hard_stop_usd: float
+    openai_api_key: str
+    transcription_model: str
+    transcription_language: str | None
 
     @property
     def db_path(self) -> Path:
@@ -114,6 +117,9 @@ def load_settings(env_file: Path | None = None) -> Settings:
         silence_threshold_dbfs=_env_float("SILENCE_THRESHOLD_DBFS", -50.0),
         budget_warn_usd=_env_float("BUDGET_WARN_USD", 80.0),
         budget_hard_stop_usd=_env_float("BUDGET_HARD_STOP_USD", 100.0),
+        openai_api_key=_env("OPENAI_API_KEY", "") or "",
+        transcription_model=_env("TRANSCRIPTION_MODEL", "gpt-4o-transcribe-diarize") or "",
+        transcription_language=_env("TRANSCRIPTION_LANGUAGE", "pt"),
     )
 
 

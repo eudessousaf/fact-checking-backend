@@ -154,3 +154,31 @@ disponíveis silenciam a gravação.
 
 **Etapa 2 validada.** Fica para o checklist do dia: rodar `audio-setup` com o
 Globoplay já tocando, depois de qualquer reinício do computador.
+
+## Etapa 3 — transcrição: sondagem (21/10/2026)
+
+**Escolha do Eudes:** OpenAI `gpt-4o-transcribe-diarize`, com US$ 5 de crédito
+para começar. A API do Claude não aceita áudio (conferido na referência da
+API), então o crédito da Anthropic fica para detecção e verificação.
+
+Comparação apresentada: OpenAI (~US$ 0,006–0,017/min, reconhece a pessoa
+pela voz entre blocos), Deepgram (~US$ 0,0043/min, pt-BR melhorado em
+mai/2026, sem identidade entre blocos), AssemblyAI (~US$ 0,15–0,21/h,
+identifica pelo CONTEXTO da fala — o tipo de palpite que não pode atribuir
+fala a candidato).
+
+**Feito**
+
+- `transcription/base.py`: interface `Transcriber` — o resto do sistema
+  não conhece fornecedor.
+- `transcription/openai_diarize.py`: chamada direta por HTTP; até 4 vozes de
+  referência; repete em erro de rede, 429 e 5xx (2, 4, 8 s); NÃO repete chave
+  errada, pedido inválido nem falta de crédito (repetir gastaria e não
+  resolveria). Falante ausente vira "?", nunca palpite.
+- `factcheck transcribe-probe ARQUIVO [--ref NOME=voz.wav ...]`: manda um
+  arquivo e guarda a resposta crua em `data/probes/`.
+
+**Por que parar na sondagem:** a rede da nuvem não alcança a OpenAI, e o
+formato da resposta veio de busca, não da documentação lida direto. O resto
+da etapa (sobreposição entre blocos, fila no banco) só é escrito depois de
+ver a resposta real.
