@@ -24,7 +24,7 @@ from pydantic import BaseModel
 from factcheck.capture.routing import AudioRouting
 from factcheck.capture.runner import now_local
 from factcheck.capture.sources import AudioSetupError
-from factcheck.config import Settings
+from factcheck.config import ConfigError, DebateConfig, Settings, load_debate_config
 from factcheck.db import connect
 
 STATIC = Path(__file__).parent / "static"
@@ -46,7 +46,8 @@ class ListenRequest(BaseModel):
     on: bool
 
 
-def create_app(settings: Settings, routing: AudioRouting | None = None) -> FastAPI:
+def create_app(settings: Settings, routing: AudioRouting | None = None,
+               debate: DebateConfig | None = None) -> FastAPI:
     if not settings.panel_password:
         raise RuntimeError("PANEL_PASSWORD vazio no .env: o painel não sobe sem senha.")
 
@@ -92,6 +93,15 @@ def create_app(settings: Settings, routing: AudioRouting | None = None) -> FastA
         finally:
             conn.close()
         return build_capture_status(row, settings.silence_alert_seconds)
+
+    if debate is None:
+        try:
+            debate = load_debate_config(settings.debate_config_path)
+        except ConfigError:
+            debate = None  # o painel ainda serve captura e som sem o debate configurado
+    from factcheck.panel.routes import build_router
+
+    app.include_router(build_router(settings, debate, auth, action))
 
     @app.get("/api/audio/route", dependencies=auth)
     def audio_route() -> dict[str, Any]:

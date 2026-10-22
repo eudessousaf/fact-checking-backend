@@ -5,144 +5,341 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Painel do operador</title>
 <style>
-  :root { --ok:#1a7f37; --warn:#b35900; --bad:#c62828; --muted:#57606a; --bg:#f6f8fa; }
-  body { font: 16px/1.4 system-ui, sans-serif; margin: 0; background: var(--bg); color: #1f2328; }
-  main { max-width: 760px; margin: 0 auto; padding: 16px; }
-  h1 { font-size: 1.2rem; margin: 0 0 12px; }
-  .card { background: #fff; border: 1px solid #d0d7de; border-radius: 8px; padding: 16px; }
-  .state { font-size: 1.6rem; font-weight: 700; margin-bottom: 8px; }
-  .state.ok { color: var(--ok); } .state.warn { color: var(--warn); } .state.bad { color: var(--bad); }
-  .meter { height: 18px; background: #e6e9ec; border-radius: 4px; overflow: hidden; }
+  :root { --ok:#1a7f37; --warn:#9a6700; --bad:#c62828; --muted:#57606a; --bg:#f6f8fa; --line:#d0d7de; }
+  * { box-sizing: border-box; }
+  body { font: 15px/1.4 system-ui, sans-serif; margin: 0; background: var(--bg); color: #1f2328; }
+  header { position: sticky; top: 0; z-index: 5; background: #fff; border-bottom: 1px solid var(--line); padding: 10px 16px; }
+  main { max-width: 1200px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; grid-template-columns: 1fr; }
+  @media (min-width: 1000px) { main { grid-template-columns: 2fr 1fr; } .wide { grid-column: 1 / -1; } }
+  h2 { font-size: 1rem; margin: 0 0 10px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 14px; min-width: 0; }
+  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .big { font-size: 1.5rem; font-weight: 800; }
+  .ok { color: var(--ok); } .warn { color: var(--warn); } .bad { color: var(--bad); }
+  button { font: inherit; font-weight: 600; padding: 7px 12px; border-radius: 6px; border: 1px solid #8c959f; background: #fff; cursor: pointer; }
+  button.primary { background: #1f2328; color: #fff; border-color: #1f2328; }
+  button.danger { background: var(--bad); color: #fff; border-color: var(--bad); }
+  button:disabled { opacity: .45; cursor: default; }
+  .meter { height: 14px; background: #e6e9ec; border-radius: 4px; overflow: hidden; }
   .meter > div { height: 100%; width: 0; background: var(--ok); transition: width .2s; }
-  dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 12px 0 0; }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 3px 14px; margin: 8px 0 0; }
   dt { color: var(--muted); }
-  section + section { margin-top: 16px; }
-  h2 { font-size: 1rem; margin: 0 0 8px; }
-  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  button { font: inherit; font-weight: 600; padding: 10px 16px; border-radius: 6px; border: 1px solid #8c959f;
-           background: #fff; cursor: pointer; }
-  button[aria-pressed="true"] { background: #1f2328; color: #fff; }
-  .rule { margin-top: 12px; padding: 10px; border-radius: 6px; background: #fff8c5; font-size: .95rem; }
-  .alert { margin-top: 12px; padding: 10px; border-radius: 6px; background: #fff1e5; color: var(--bad);
-           font-weight: 600; display: none; }
+  .alert { padding: 8px 10px; border-radius: 6px; background: #fff1e5; color: var(--bad); font-weight: 600; margin-top: 6px; }
+  .rule { margin-top: 10px; padding: 8px 10px; border-radius: 6px; background: #fff8c5; font-size: .92rem; }
+  .paused { background: var(--bad); color: #fff; padding: 8px 12px; border-radius: 6px; font-weight: 800; }
+  .claim { border: 1px solid var(--line); border-left-width: 6px; border-radius: 6px; padding: 10px; margin-bottom: 10px; }
+  .claim.s-pronta { border-left-color: #0969da; } .claim.s-publicada { border-left-color: var(--ok); }
+  .claim.s-bloqueada, .claim.s-sem_evidencia { border-left-color: var(--warn); } .claim.s-removida, .claim.s-erro { border-left-color: var(--bad); }
+  .tag { display: inline-block; font-size: .78rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: #eaeef2; }
+  .quote { font-style: italic; margin: 6px 0; }
+  .muted { color: var(--muted); font-size: .88rem; }
+  textarea, select, input { font: inherit; width: 100%; padding: 6px; border: 1px solid var(--line); border-radius: 6px; }
+  textarea { min-height: 54px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+  th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+  .tline { font-size: .9rem; margin: 2px 0; }
+  .tline .who { font-weight: 700; }
+  .unc { color: var(--warn); }
+  .tabs button[aria-pressed="true"] { background: #1f2328; color: #fff; }
 </style>
 </head>
 <body>
-<main>
-  <h1>Painel do operador — captura</h1>
-  <section class="card" aria-live="polite">
-    <div id="state" class="state">carregando…</div>
-    <div class="meter" aria-hidden="true"><div id="bar"></div></div>
-    <dl>
-      <dt>Nível agora</dt><dd id="level">—</dd>
-      <dt>Último bloco</dt><dd id="chunk">—</dd>
-      <dt>Silêncio</dt><dd id="silence">—</dd>
-      <dt>Captura nº</dt><dd id="run">—</dd>
-    </dl>
-    <div id="alert" class="alert"></div>
-  </section>
-  <section class="card" aria-live="polite">
-    <h2>Saída de som</h2>
-    <div id="route" class="state">—</div>
-    <dl>
-      <dt>Saída "Debate"</dt><dd id="r-sink">—</dd>
-      <dt>Cópia para ouvir</dt><dd id="r-loop">—</dd>
-      <dt>Navegador no "Debate"</dt><dd id="r-browser">—</dd>
-    </dl>
-    <div class="row" style="margin-top:12px">
-      <button id="listen" type="button" aria-pressed="false">Silenciar meu som</button>
-      <span id="listen-msg"></span>
+<header>
+  <div class="row" style="justify-content: space-between">
+    <div class="row">
+      <span id="dstate" class="big">—</span>
+      <span id="dmode" class="tag">—</span>
+      <span id="pausedBadge" class="paused" hidden>PUBLICAÇÃO PAUSADA</span>
     </div>
-    <div class="rule"><strong>Não mexa no volume do sistema nem no do player do Globoplay</strong> —
-      os dois silenciam a gravação. Para não ouvir, use o botão acima: ele cala só o seu som.</div>
-    <div id="route-alert" class="alert"></div>
+    <div class="row">
+      <button data-status="em_andamento">Debate começou</button>
+      <button data-interval="intervalo">Entrou em intervalo</button>
+      <button data-interval="debate">Voltou ao debate</button>
+      <button data-status="encerrado">Debate encerrado</button>
+      <button id="pause" class="danger">Pausar publicação</button>
+    </div>
+  </div>
+  <div id="alerts"></div>
+</header>
+<main>
+  <section class="card wide" aria-labelledby="q-title">
+    <div class="row" style="justify-content: space-between">
+      <h2 id="q-title">Fila de checagens</h2>
+      <div class="row tabs" id="tabs">
+        <button data-tab="fila" aria-pressed="true">Na fila</button>
+        <button data-tab="revisar" aria-pressed="false">Revisar (sem evidência / bloqueadas)</button>
+        <button data-tab="publicadas" aria-pressed="false">Publicadas</button>
+        <button data-tab="andamento" aria-pressed="false">Em andamento</button>
+        <button id="approveAll" hidden>Aprovar todas da fila</button>
+      </div>
+    </div>
+    <div id="queue"></div>
   </section>
+
+  <section class="card" aria-labelledby="t-title">
+    <h2 id="t-title">Transcrição recente — confira quem está falando</h2>
+    <div id="transcript" class="muted">—</div>
+  </section>
+
+  <div style="display:grid; gap:16px; align-content:start">
+    <section class="card" aria-live="polite">
+      <h2>Captura</h2>
+      <div id="state" class="big">carregando…</div>
+      <div class="meter" aria-hidden="true"><div id="bar"></div></div>
+      <dl>
+        <dt>Nível</dt><dd id="level">—</dd>
+        <dt>Último bloco</dt><dd id="chunk">—</dd>
+        <dt>Silêncio</dt><dd id="silence">—</dd>
+        <dt>Processados</dt><dd id="progress">—</dd>
+      </dl>
+      <div id="alert" class="alert" hidden></div>
+    </section>
+
+    <section class="card" aria-live="polite">
+      <h2>Saída de som</h2>
+      <div id="route" class="big">—</div>
+      <dl>
+        <dt>Navegador no "Debate"</dt><dd id="r-browser">—</dd>
+        <dt>Cópia para ouvir</dt><dd id="r-loop">—</dd>
+      </dl>
+      <div class="row" style="margin-top:8px">
+        <button id="listen" type="button" aria-pressed="false">Silenciar meu som</button>
+        <span id="listen-msg" class="muted"></span>
+      </div>
+      <div class="rule"><strong>Não mexa no volume do sistema nem no do player</strong> — os dois silenciam a gravação.</div>
+      <div id="route-alert" class="alert" hidden></div>
+    </section>
+
+    <section class="card">
+      <h2>Equilíbrio entre candidatos</h2>
+      <table id="balance"><thead><tr><th></th><th>Detectadas</th><th>Checadas</th><th>Publicadas</th><th>Sem evid.</th></tr></thead><tbody></tbody></table>
+      <p class="muted" id="verdicts"></p>
+    </section>
+
+    <section class="card">
+      <h2>Custo estimado</h2>
+      <p id="costs" class="muted">—</p>
+    </section>
+
+    <section class="card">
+      <h2>Modo e horário</h2>
+      <div class="row">
+        <button data-mode="ao_vivo">Ao vivo</button>
+        <button data-mode="pos_debate">Pós-debate</button>
+      </div>
+      <p class="muted">No pós-debate nada publica sozinho: você aprova cada item ou o lote.</p>
+      <label class="muted">Início real do debate (data e hora)<input id="anchorStart" type="datetime-local"></label>
+      <label class="muted">Em que segundo do arquivo o debate começa (pós-debate)<input id="anchorOffset" type="number" value="0" min="0" step="1"></label>
+      <button id="saveAnchor" style="margin-top:6px">Salvar início</button>
+      <p class="muted" id="anchorNow"></p>
+    </section>
+  </div>
 </main>
 <script>
-// Texto e cor dizem a mesma coisa: o estado nunca depende só da cor.
+"use strict";
 const $ = (id) => document.getElementById(id);
-function render(s) {
+const VERDICTS = { VERDADEIRO: "✓ Verdadeiro", NAO_E_BEM_ASSIM: "! Não é bem assim", FALSO: "✗ Falso", SEM_EVIDENCIA: "Sem evidência" };
+const STATES = { aguardando: "AGUARDANDO", em_andamento: "DEBATE EM ANDAMENTO", intervalo: "INTERVALO", encerrado: "ENCERRADO" };
+let overview = null, claims = [], tab = "fila", lastRoute = null;
+const editing = new Set();
+
+function el(tag, attrs, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") n.className = v; else if (k.startsWith("on")) n.addEventListener(k.slice(2), v); else n.setAttribute(k, v);
+  }
+  for (const c of kids) if (c != null && c !== false) n.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  return n;
+}
+const hhmm = (iso) => { if (!iso) return "—"; const d = new Date(iso); return isNaN(d) ? "—" : d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }); };
+
+async function post(url, body) {
+  // X-Painel: sem ele o servidor recusa (proteção contra cliques de outros sites).
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", "X-Painel": "1" }, body: JSON.stringify(body || {}) });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.detail || `HTTP ${r.status}`);
+  return data;
+}
+async function act(url, body, confirmText) {
+  if (confirmText && !confirm(confirmText)) return;
+  try { await post(url, body); await refresh(); } catch (e) { alert("Não foi possível: " + e.message); }
+}
+
+// --- cabeçalho, alertas, equilíbrio, custo -----------------------------------
+function renderOverview(o) {
+  const st = o.state;
+  $("dstate").textContent = STATES[st.status] || st.status;
+  $("dstate").className = "big " + (st.status === "em_andamento" ? "ok" : st.status === "intervalo" ? "warn" : "");
+  $("dmode").textContent = (st.mode === "pos_debate" ? "PÓS-DEBATE" : "AO VIVO") + (st.manual_interval ? " · intervalo manual" : "");
+  $("pausedBadge").hidden = !st.publish_paused;
+  $("pause").textContent = st.publish_paused ? "Retomar publicação" : "Pausar publicação";
+  $("approveAll").hidden = st.mode !== "pos_debate";
+  $("alerts").replaceChildren(...o.alerts.map((a) => el("div", { class: "alert" }, a)));
+  $("progress").textContent = `${o.progress.done} de ${o.progress.total} blocos`;
+  const tb = $("balance").querySelector("tbody");
+  tb.replaceChildren(...o.balance.map((b) => el("tr", null, el("th", null, b.name), el("td", null, b.detected), el("td", null, b.checked), el("td", null, b.published), el("td", null, b.sem_evidencia))));
+  $("verdicts").textContent = o.balance.map((b) => `${b.name}: ` + (Object.entries(b.verdicts).map(([v, n]) => `${VERDICTS[v] || v} ${n}`).join(", ") || "nada publicado")).join(" · ");
+  const c = o.costs;
+  $("costs").textContent = `Claude: US$ ${c.anthropic.toFixed(2)} (alerta em ${c.warn}, para em ${c.hard}) · Transcrição: US$ ${c.openai.toFixed(2)}`;
+  $("anchorNow").textContent = st.started_at ? `Início registrado: ${new Date(st.started_at).toLocaleString("pt-BR")}` : "Início ainda não registrado.";
+}
+
+// --- fila --------------------------------------------------------------------------
+const TAB_STATES = { fila: ["pronta"], revisar: ["sem_evidencia", "bloqueada", "erro"], publicadas: ["publicada", "removida"], andamento: ["detectada", "verificando"] };
+
+function countdown(c) {
+  if (!c.publish_at) return "não publica sozinha";
+  const s = Math.round((new Date(c.publish_at) - Date.now()) / 1000);
+  if (overview && overview.state.publish_paused) return "PAUSADA";
+  return s > 0 ? `publica em ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : "publicando…";
+}
+
+function claimCard(c) {
+  const box = el("div", { class: `claim s-${c.status}`, "data-id": c.id });
+  box.append(el("div", { class: "row" },
+    el("span", { class: "tag" }, `#${c.id}`), el("strong", null, c.candidate), el("span", { class: "muted" }, `disse às ${hhmm(c.said_at)}`),
+    el("span", { class: "tag" }, c.status), c.verdict ? el("strong", null, VERDICTS[c.verdict] || c.verdict) : null,
+    c.status === "pronta" ? el("span", { class: "tag cd", "data-id": c.id }, countdown(c)) : null));
+  box.append(el("div", { class: "quote" }, `“${c.quote}”`), el("div", null, el("strong", null, "Afirmação: "), c.claim));
+  if (c.error) box.append(el("div", { class: "alert" }, c.error));
+  if (c.notes && c.notes.length) box.append(el("div", { class: "muted" }, "Observações do sistema: " + c.notes.join("; ")));
+  if (c.explanation) box.append(el("p", null, c.explanation));
+  if (c.what_is_off) box.append(el("p", null, el("strong", null, "O que não confere: "), c.what_is_off));
+  if (c.sources.length) box.append(el("ol", { class: "muted" }, ...c.sources.map((s) => el("li", null, el("a", { href: s.url, target: "_blank", rel: "noopener noreferrer" }, s.title), ` (${s.kind})`))));
+
+  const actions = el("div", { class: "row" });
+  if (c.status === "pronta") {
+    actions.append(el("button", { class: "primary", onclick: () => act(`/api/claims/${c.id}/publish`) }, "Publicar agora"),
+                   el("button", { onclick: () => act(`/api/claims/${c.id}/block`) }, "Bloquear"));
+  }
+  if (c.status === "bloqueada") actions.append(el("button", { class: "primary", onclick: () => act(`/api/claims/${c.id}/publish`) }, "Publicar"));
+  if (c.status === "publicada") actions.append(el("button", { class: "danger", onclick: () => {
+    const note = prompt("Nota pública (opcional), ex.: 'Removida para correção'", "Checagem removida para revisão.");
+    if (note !== null) act(`/api/claims/${c.id}/unpublish`, { note });
+  } }, "Despublicar"));
+  if (["pronta", "bloqueada", "publicada", "sem_evidencia"].includes(c.status)) {
+    actions.append(el("button", { onclick: () => toggleEdit(c, box) }, "Editar"));
+  }
+  box.append(actions);
+  if (editing.has(c.id)) box.append(editForm(c));
+  return box;
+}
+
+function toggleEdit(c) { editing.has(c.id) ? editing.delete(c.id) : editing.add(c.id); renderQueue(); }
+
+function editForm(c) {
+  const sel = el("select", null, ...Object.entries(VERDICTS).map(([v, l]) => { const o = el("option", { value: v }, l); if (v === c.verdict) o.selected = true; return o; }));
+  const exp = el("textarea", null); exp.value = c.explanation || "";
+  const off = el("textarea", { placeholder: "O que está errado ou faltando (obrigatório em Não é bem assim)" }); off.value = c.what_is_off || "";
+  const save = el("button", { class: "primary", onclick: async () => {
+    await act(`/api/claims/${c.id}/edit`, { verdict: sel.value, explanation: exp.value, what_is_off: off.value });
+    editing.delete(c.id); renderQueue();
+  } }, "Salvar edição");
+  return el("div", { class: "grid2", style: "margin-top:8px" }, sel, save, exp, off);
+}
+
+function renderQueue() {
+  const wanted = TAB_STATES[tab];
+  let items = claims.filter((c) => wanted.includes(c.status));
+  if (tab === "fila") items.sort((a, b) => String(a.publish_at || "z").localeCompare(String(b.publish_at || "z")));
+  $("queue").replaceChildren(...(items.length ? items.map(claimCard) : [el("p", { class: "muted" }, "Nada aqui.")]));
+}
+
+function tickCountdowns() {
+  for (const n of document.querySelectorAll(".cd")) {
+    const c = claims.find((x) => String(x.id) === n.dataset.id);
+    if (c) n.textContent = countdown(c);
+  }
+}
+
+// --- transcrição, captura, som ------------------------------------------------------------
+function renderTranscript(lines) {
+  $("transcript").replaceChildren(...lines.map((l) => el("p", { class: "tline" },
+    el("span", { class: "who" + (l.uncertain ? " unc" : "") }, `${l.who}${l.uncertain ? ` (${l.uncertain})` : ""}: `), l.text)));
+}
+
+function renderCapture(s) {
   let label = "OUVINDO", cls = "ok", alert = "";
-  if (s.state === "nunca_iniciada") { label = "CAPTURA NÃO INICIADA"; cls = "bad";
-    alert = "Rode `factcheck capture` em outro terminal."; }
-  else if (s.stale) { label = "CAPTURA PARADA"; cls = "bad";
-    alert = `Sem notícia do processo de captura há ${s.seconds_since_update} s. Ele caiu ou travou.`; }
+  if (s.state === "nunca_iniciada") { label = "CAPTURA NÃO INICIADA"; cls = "bad"; alert = "Rode `factcheck capture` em outro terminal."; }
+  else if (s.stale) { label = "CAPTURA PARADA"; cls = "bad"; alert = `Sem notícia da captura há ${s.seconds_since_update} s.`; }
   else if (s.state === "parado") { label = "CAPTURA ENCERRADA"; cls = "warn"; }
   else if (s.state === "reconectando") { label = "RECONECTANDO"; cls = "bad"; alert = s.message || ""; }
-  else if (s.silence_alert) { label = "SILÊNCIO"; cls = "bad";
-    alert = `Sem som há ${Math.round(s.silence_seconds)} s. O Globoplay travou, deslogou ou está tocando em outra saída de som?`; }
-  $("state").textContent = label;
-  $("state").className = "state " + cls;
+  else if (s.silence_alert) { label = "SILÊNCIO"; cls = "bad"; alert = `Sem som há ${Math.round(s.silence_seconds)} s. O Globoplay travou ou deslogou?`; }
+  $("state").textContent = label; $("state").className = "big " + cls;
   const lvl = s.level_dbfs;
   $("level").textContent = lvl == null ? "—" : `${lvl.toFixed(1)} dBFS`;
-  // -60 dBFS = barra vazia, 0 dBFS = cheia.
   $("bar").style.width = lvl == null ? "0" : `${Math.max(0, Math.min(100, (lvl + 60) / 60 * 100))}%`;
-  $("chunk").textContent = s.last_chunk_idx == null ? "nenhum ainda"
-    : `nº ${s.last_chunk_idx}, há ${Math.round(s.seconds_since_last_chunk)} s`;
-  $("silence").textContent = s.silence_seconds == null ? "—" : `${Math.round(s.silence_seconds)} s (alerta em ${s.silence_alert_after_s} s)`;
-  $("run").textContent = s.run_id ?? "—";
-  $("alert").textContent = alert;
-  $("alert").style.display = alert ? "block" : "none";
+  $("chunk").textContent = s.last_chunk_idx == null ? "nenhum" : `nº ${s.last_chunk_idx}, há ${Math.round(s.seconds_since_last_chunk)} s`;
+  $("silence").textContent = s.silence_seconds == null ? "—" : `${Math.round(s.silence_seconds)} s`;
+  $("alert").textContent = alert; $("alert").hidden = !alert;
 }
-async function tick() {
-  try {
-    const r = await fetch("/api/capture/status", { cache: "no-store" });
-    if (!r.ok) throw new Error(r.status);
-    render(await r.json());
-  } catch (e) {
-    render({ state: "?", stale: true, seconds_since_update: "?" });
-    $("alert").textContent = "O painel não conseguiu ler o status (o painel caiu?).";
-  }
-}
+
 function renderRoute(r) {
-  const yes = (b) => b ? "sim" : "NÃO";
   let label = "ROTA OK", cls = "ok", alert = "";
   if (r.error) { label = "ROTA DESCONHECIDA"; cls = "bad"; alert = r.error; }
-  else if (!r.virtual_sink || !r.loopback) { label = "ROTA NÃO MONTADA"; cls = "bad";
-    alert = "Rode `factcheck audio-setup` num terminal."; }
-  else if (r.browsers_total === 0) { label = "NAVEGADOR SEM SOM"; cls = "warn";
-    alert = "Nenhum navegador tocando agora. Se o Globoplay está tocando, rode `factcheck audio-setup` de novo."; }
-  else if (r.browsers_on_debate < r.browsers_total) { label = "NAVEGADOR FORA DA ROTA"; cls = "bad";
-    alert = "O navegador está tocando direto nos alto-falantes e a gravação não ouve. Rode `factcheck audio-setup` de novo."; }
-  $("route").textContent = label;
-  $("route").className = "state " + cls;
-  $("r-sink").textContent = r.error ? "—" : yes(r.virtual_sink);
-  $("r-loop").textContent = r.error ? "—" : (r.loopback ? (r.loopback_muted ? "sim (silenciada)" : "sim") : "NÃO");
+  else if (!r.virtual_sink || !r.loopback) { label = "ROTA NÃO MONTADA"; cls = "bad"; alert = "Rode `factcheck audio-setup`."; }
+  else if (r.browsers_total === 0) { label = "NAVEGADOR SEM SOM"; cls = "warn"; alert = "Nenhum navegador tocando agora."; }
+  else if (r.browsers_on_debate < r.browsers_total) { label = "NAVEGADOR FORA DA ROTA"; cls = "bad"; alert = "A gravação não ouve o navegador. Rode `factcheck audio-setup`."; }
+  $("route").textContent = label; $("route").className = "big " + cls;
   $("r-browser").textContent = r.error ? "—" : `${r.browsers_on_debate} de ${r.browsers_total}`;
+  $("r-loop").textContent = r.error ? "—" : (r.loopback ? (r.loopback_muted ? "silenciada" : "ligada") : "NÃO");
   const muted = r.loopback_muted === true;
   $("listen").textContent = muted ? "Ouvir de novo" : "Silenciar meu som";
-  $("listen").setAttribute("aria-pressed", String(muted));
   $("listen").disabled = !r.loopback;
-  $("route-alert").textContent = alert;
-  $("route-alert").style.display = alert ? "block" : "none";
+  $("route-alert").textContent = alert; $("route-alert").hidden = !alert;
 }
-let lastRoute = null;
-async function tickRoute() {
+
+async function getJSON(url) { const r = await fetch(url, { cache: "no-store" }); if (!r.ok) throw new Error(r.status); return r.json(); }
+
+async function refresh() {
   try {
-    const r = await fetch("/api/audio/route", { cache: "no-store" });
-    if (!r.ok) throw new Error(r.status);
-    lastRoute = await r.json();
-    renderRoute(lastRoute);
-  } catch (e) {
-    renderRoute({ error: "O painel não conseguiu ler a rota de som." });
-  }
+    [overview, claims] = await Promise.all([getJSON("/api/overview"), getJSON("/api/claims")]);
+    renderOverview(overview);
+    // Não redesenha a fila enquanto o operador edita: perderia o que foi digitado.
+    if (!editing.size) renderQueue();
+  } catch (e) { $("alerts").replaceChildren(el("div", { class: "alert" }, "O painel não conseguiu ler o estado (o painel caiu?).")); }
 }
+async function refreshFast() {
+  try { renderCapture(await getJSON("/api/capture/status")); } catch { renderCapture({ state: "?", stale: true, seconds_since_update: "?" }); }
+}
+async function refreshSlow() {
+  try { lastRoute = await getJSON("/api/audio/route"); renderRoute(lastRoute); } catch { renderRoute({ error: "sem resposta" }); }
+  try { renderTranscript(await getJSON("/api/transcript")); } catch {}
+}
+
+// --- botões ---------------------------------------------------------------------------
+for (const b of document.querySelectorAll("[data-status]")) b.addEventListener("click", () =>
+  act("/api/debate/status", { status: b.dataset.status }, b.dataset.status === "encerrado" ? "Encerrar o debate?" : null));
+for (const b of document.querySelectorAll("[data-interval]")) b.addEventListener("click", () => act("/api/debate/interval", { value: b.dataset.interval }));
+for (const b of document.querySelectorAll("[data-mode]")) b.addEventListener("click", () =>
+  act("/api/debate/mode", { mode: b.dataset.mode }, `Mudar para ${b.textContent}?`));
+$("pause").addEventListener("click", () => act("/api/publish/pause", { paused: !(overview && overview.state.publish_paused) }));
+$("approveAll").addEventListener("click", () => act("/api/claims/approve-all", {}, "Publicar TODAS as checagens da fila? Revise antes."));
+$("saveAnchor").addEventListener("click", () => {
+  const v = $("anchorStart").value;
+  if (!v) { alert("Informe data e hora."); return; }
+  const off = -new Date(v).getTimezoneOffset(), sign = off >= 0 ? "+" : "-", abs = Math.abs(off);
+  const iso = `${v}:00${sign}${String(Math.floor(abs / 60)).padStart(2, "0")}:${String(abs % 60).padStart(2, "0")}`;
+  act("/api/debate/anchor", { debate_start: iso, file_offset_s: Number($("anchorOffset").value || 0) });
+});
 $("listen").addEventListener("click", async () => {
   const on = lastRoute && lastRoute.loopback_muted === true;
-  $("listen-msg").textContent = "…";
-  try {
-    // X-Painel: sem ele o servidor recusa (proteção contra cliques vindos de outros sites).
-    const r = await fetch("/api/audio/listen", { method: "POST",
-      headers: { "Content-Type": "application/json", "X-Painel": "1" }, body: JSON.stringify({ on }) });
-    const body = await r.json();
-    if (!r.ok) throw new Error(body.detail || r.status);
-    lastRoute = body; renderRoute(body); $("listen-msg").textContent = "";
-  } catch (e) { $("listen-msg").textContent = "Falhou: " + e.message; }
+  try { lastRoute = await post("/api/audio/listen", { on }); renderRoute(lastRoute); $("listen-msg").textContent = ""; }
+  catch (e) { $("listen-msg").textContent = "Falhou: " + e.message; }
 });
-tick();
-tickRoute();
-setInterval(tick, 1000);
-setInterval(tickRoute, 3000);
+for (const b of document.querySelectorAll("#tabs [data-tab]")) b.addEventListener("click", () => {
+  tab = b.dataset.tab;
+  for (const x of document.querySelectorAll("#tabs [data-tab]")) x.setAttribute("aria-pressed", String(x === b));
+  renderQueue();
+});
+
+refresh(); refreshFast(); refreshSlow();
+setInterval(refresh, 2000);
+setInterval(refreshFast, 1000);
+setInterval(refreshSlow, 3000);
+setInterval(tickCountdowns, 1000);
 </script>
 </body>
 </html>
