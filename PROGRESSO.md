@@ -219,3 +219,45 @@ com o nome certo — inclusive o 2 e o 3, que não cederam trecho de voz.
    vozes) e ~1.050 de saída por bloco. Pelos preços de terceiros
    (US$ 2,50/10 por milhão), ~US$ 0,012 por bloco, **~US$ 4 por debate**.
    Confirmar no painel de uso da OpenAI.
+
+## Etapas 3 a 10 — o fluxo inteiro (22/10/2026, madrugada)
+
+Escritas e testadas na nuvem com modelos SIMULADOS (90 testes, incluindo um
+de ponta a ponta com as threads reais). **Nada disto falou ainda com o Claude
+de verdade**: `factcheck claude-probe` é o primeiro passo na máquina do Eudes.
+
+| etapa | o que faz | arquivo |
+|---|---|---|
+| 3 | transcrição contínua, papel pela voz, sobreposição dividida ao meio | `pipeline/transcribe.py` |
+| 4 | intervalo: botão > frase do mediador > Haiku; indefinido = intervalo; volta exige 2 blocos de debate com voz conhecida | `pipeline/interval.py` |
+| 6 | afirmações: só fala certa de candidato, sem nomes, citação conferida na fala daquele candidato, sem duplicata | `pipeline/detect.py` |
+| 7 | verificação: Sonnet + busca; código exige fonte da busca, 2 sites independentes, "o que não confere" em NÃO É BEM ASSIM, 3 frases; senão SEM_EVIDENCIA; teto de US$ 100 | `pipeline/verify.py` |
+| 8 | fila com contagem, pausa geral, bloquear, publicar agora, editar, despublicar; item ruim não trava os outros | `pipeline/publish.py` |
+| 5 | painel: estado do debate, fila, equilíbrio, custo, transcrição recente, alertas | `panel/` |
+| 9 (backend) | envio ao Spaces com gzip e cache curto; `deploy-site` | `hosting.py` |
+| 10 | pós-debate: arquivo, pasta de backup, retomada de onde o ao vivo parou, estimativa de término | `cli.py` |
+| 13 | checklist do dia | `docs/CHECKLIST-DIA-DO-DEBATE.md` |
+
+**Escolhas que divergem do plano ou o completam, e por quê**
+
+- Busca `web_search_20250305` (sem filtragem dinâmica): a versão nova filtra os
+  resultados com código, e o plano exige provar que cada URL veio da busca.
+- Veredito por ferramenta `registrar_veredito` com `strict`, não por texto.
+- `fallbacks: "default"` no Sonnet: recusa por classificador de segurança é
+  refeita no servidor por outro modelo. Pode ser desligado se o Eudes preferir.
+- O tipo da fonte (primária/agência) é decidido pelo DOMÍNIO, não pelo modelo.
+- "Independentes" = organizações diferentes: duas páginas do IBGE contam uma.
+
+**Não verificado — depende da máquina do Eudes**
+
+- Formato real das chamadas ao Claude (`claude-probe`).
+- Preço da busca na web (US$ 10/mil é o histórico; não constava na referência).
+- Envio ao Spaces (ACL pública, gzip) e o comportamento da CDN.
+- Voz do mediador da Band (teste) e do César Tralli (sexta).
+
+**Pendente**
+
+- Etapa 11 (publicidade no painel): a página já lê `ads.json`; falta o
+  controle no painel. Prioridade abaixo do teste completo, como o plano manda.
+- Etapa 12: teste completo com o debate da Band, ao vivo e pós-debate.
+- Teste de carga contra a URL real.

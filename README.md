@@ -95,3 +95,77 @@ factcheck capture --file caminho/do/audio.wav              # o mais rápido poss
 diferente da padrão (HDMI, fone Bluetooth). Rode `--list-sources`, veja qual
 está `RUNNING` enquanto o vídeo toca, e use `--source NOME` (ou ponha o nome
 em `CAPTURE_SOURCE` no `.env`).
+
+## Vozes de referência (obrigatórias)
+
+Sem elas, os rótulos de falante trocam de um bloco para o outro (medido em
+22/10/2026) e nada é publicado sozinho. São 2 a 10 segundos de cada pessoa
+falando **sozinha**, recortados de qualquer gravação feita com
+`factcheck capture`:
+
+```bash
+mkdir -p data/voices
+# -ss = segundo onde começa, -t = duração
+ffmpeg -y -ss 17.7 -t 7.5 -i data/audio/run_0007/chunks/chunk_00001.wav data/voices/flavio.wav
+ffplay -autoexit -nodisp data/voices/flavio.wav     # OUÇA: voz trocada troca os candidatos
+```
+
+Os caminhos ficam em `[voices]` no `config/debate.toml` (A, B e M = mediador).
+
+## Chaves no `.env`
+
+| chave | para quê |
+|---|---|
+| `PANEL_PASSWORD` | senha do painel |
+| `OPENAI_API_KEY` | transcrição |
+| `ANTHROPIC_API_KEY` | intervalo, detecção e verificação |
+| `SPACES_BUCKET`, `SPACES_REGION`, `SPACES_KEY`, `SPACES_SECRET` | envio da página e do `timeline.json` |
+
+Antes do primeiro uso real, confira as duas APIs (custa centavos):
+
+```bash
+factcheck transcribe-probe data/audio/run_0007/chunks/chunk_00002.wav --ref "Flávio=data/voices/flavio.wav"
+factcheck claude-probe
+```
+
+## O sistema completo: três terminais
+
+| terminal | comando | o que faz |
+|---|---|---|
+| 1 | `factcheck panel` | painel em http://127.0.0.1:8765 |
+| 2 | `factcheck capture` | grava (depois de `factcheck audio-setup`) |
+| 3 | `factcheck pipeline` | transcreve, detecta intervalo, extrai e verifica afirmações, publica |
+
+Para testar a página localmente com o `timeline.json` real:
+
+```bash
+factcheck pipeline --publicar-em ../fact-checking-frontend/public
+# em outro terminal, no frontend: npm run serve
+```
+
+## Pós-debate (plano B)
+
+Mesmo fluxo, outra fonte de áudio. No painel, clique em **Pós-debate**:
+nada publica sozinho, você aprova.
+
+```bash
+# arquivo de áudio/vídeo seu (o mais rápido possível)
+factcheck capture --file debate.mp4
+# a gravação de backup do próprio sistema (a pasta com as partes)
+factcheck capture --file data/audio/run_0007/backup
+# o ao vivo caiu no meio: continua do ponto em que parou
+factcheck capture --file debate.mp4 --retomar --inicio-no-arquivo 312
+factcheck pipeline --workers 4
+```
+
+No pós-debate, informe no painel o **início real do debate** e **em que
+segundo do arquivo** ele começa: é isso que dá às checagens o horário da
+fala ("22h07"), e não o do processamento.
+
+## Página pública no Spaces
+
+```bash
+factcheck deploy-site ../fact-checking-frontend/public --com-exemplos   # só na 1ª vez
+factcheck deploy-site ../fact-checking-frontend/public                  # depois
+factcheck costs                                                          # gasto estimado
+```

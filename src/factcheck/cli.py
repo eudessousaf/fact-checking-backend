@@ -289,6 +289,55 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_claude_probe(args: argparse.Namespace) -> int:
+    """Uma classificação (Haiku) e uma verificação (Sonnet + busca) de teste.
+
+    Existe porque a rede da nuvem não alcança a API: o formato das chamadas
+    foi escrito pela documentação e precisa ser visto funcionando antes do
+    teste completo.
+    """
+    import json
+
+    from factcheck.costs import TokenPrice, total_usd
+    from factcheck.db import connect
+    from factcheck.llm.claude import Claude, ClaudePrices, LLMError
+    from factcheck.pipeline import interval, verify
+
+    settings = load_settings()
+    prices = ClaudePrices(TokenPrice(settings.haiku_price_in_per_m, settings.haiku_price_out_per_m),
+                          TokenPrice(settings.sonnet_price_in_per_m, settings.sonnet_price_out_per_m),
+                          settings.web_search_usd_per_1000)
+    claude = Claude(settings.anthropic_api_key, lambda: connect(settings.db_path), prices,
+                    settings.detect_model, settings.verify_model, settings.verify_effort)
+    conn = connect(settings.db_path)
+    before = total_usd(conn, "anthropic")
+    try:
+        print("1) Haiku — classificação de um trecho de comercial…")
+        r = claude.json_call("sonda", interval.CLASSIFY_SYSTEM,
+                             "Transcrição:\n[VOZ_DESCONHECIDA] Aproveite! Só neste fim de semana, carros com "
+                             "taxa zero. Corra para a concessionária.", interval.CLASSIFY_SCHEMA, max_tokens=1000)
+        print(f"   resposta: {json.dumps(r, ensure_ascii=False)}")
+        print("\n2) Sonnet — verificação com busca na web (leva até 1–2 minutos)…")
+        res = claude.verify(verify.VERIFY_SYSTEM, f"Data do debate: {args.data}.\n\nAfirmação a checar:\n{args.afirmacao}",
+                            verify.VERDICT_SCHEMA)
+        out = verify.validate(res.verdict_input, res.search_results)
+        print(f"   modelo que respondeu: {res.model}")
+        print(f"   buscas: {res.searches}; resultados vistos: {len(res.search_results)}")
+        print(f"   veredito do modelo: {json.dumps(res.verdict_input, ensure_ascii=False, indent=2)}")
+        print(f"\n   DEPOIS DAS REGRAS DO CÓDIGO: {out.status}")
+        if out.notes:
+            print(f"   observações: {'; '.join(out.notes)}")
+        for s in out.sources:
+            print(f"   - [{s['kind']}] {s['title']} — {s['url']}")
+    except LLMError as exc:
+        log.error("%s", exc)
+        return 1
+    finally:
+        print(f"\ncusto estimado desta sonda: US$ {total_usd(conn, 'anthropic') - before:.4f}")
+        conn.close()
+    return 0
+
+
 def cmd_deploy_site(args: argparse.Namespace) -> int:
     from factcheck.hosting import SpacesUploader, deploy_site
 
@@ -384,6 +433,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--publicar-em", metavar="PASTA",
                    help="também grava o timeline.json nesta pasta (ex.: ../fact-checking-frontend/public)")
     p.set_defaults(func=cmd_pipeline)
+
+    p = sub.add_parser("claude-probe", help="testa as chamadas ao Claude (classificação e uma verificação)")
+    p.add_argument("--afirmacao", default="A taxa de desemprego no Brasil ficou abaixo de 6% em 2025.",
+                   help="afirmação de teste para verificar")
+    p.add_argument("--data", default="2026-10-23", help="data do debate usada no prompt")
+    p.set_defaults(func=cmd_claude_probe)
 
     p = sub.add_parser("deploy-site", help="envia a página pública para o Spaces")
     p.add_argument("public_dir", help="a pasta public/ do fact-checking-frontend")
