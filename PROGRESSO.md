@@ -182,3 +182,40 @@ fala a candidato).
 formato da resposta veio de busca, não da documentação lida direto. O resto
 da etapa (sobreposição entre blocos, fila no banco) só é escrito depois de
 ver a resposta real.
+
+### Resultado da sondagem (21–22/10/2026, máquina do Eudes, debate da Band)
+
+Captura `run_0007`, 4 blocos com Lula e Flávio Bolsonaro em discussão.
+
+**Sem vozes de referência, os rótulos trocam quase a cada bloco** — o risco
+apontado no início, agora medido:
+
+| bloco | Flávio | Lula |
+|---|---|---|
+| 1 | B | A |
+| 2 | A | B |
+| 3 | B | A |
+| 4 | A | B (+ um "C" num aparte) |
+
+Mapear "A = Flávio" uma vez no painel teria atribuído metade das falas ao
+candidato errado. **Vozes de referência são obrigatórias; sem elas, nada
+publica sozinho.**
+
+**Com as vozes** (Flávio: bloco 1, 17,7–25,2 s; Lula: bloco 4, 23,3–30,0 s;
+os dois trechos ouvidos e confirmados pelo Eudes), os quatro blocos saíram
+com o nome certo — inclusive o 2 e o 3, que não cederam trecho de voz.
+
+**Três achados que viram regra:**
+
+1. O aparte de terceira voz ("C", "De 64") virou **"Flávio: This is why."**
+   com as referências: o modelo parece encaixar toda voz numa das
+   referências e pode inventar texto em fala curta. Consequências: a voz do
+   **mediador entra como terceira referência sempre**, e o comportamento
+   com vozes que não são de ninguém (comercial, propaganda eleitoral)
+   precisa ser medido antes de confiar na detecção de intervalo.
+2. No bate-boca a transcrição vira pedaços de 0,1–0,5 s alternando falantes.
+   Fala curta em sobreposição nunca vira afirmação.
+3. Custo: cobrado por tokens, não por minuto — ~640 de entrada (áudio + as
+   vozes) e ~1.050 de saída por bloco. Pelos preços de terceiros
+   (US$ 2,50/10 por milhão), ~US$ 0,012 por bloco, **~US$ 4 por debate**.
+   Confirmar no painel de uso da OpenAI.
