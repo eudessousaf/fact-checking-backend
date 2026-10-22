@@ -52,6 +52,101 @@ MIGRATIONS: list[str] = [
         message         TEXT
     );
     """,
+    # 2 — fluxo de checagem. Uma linha de `claims` vive do "detectada" ao
+    # "publicada"/"removida": o estado mora na linha, e é isso que deixa o
+    # processo cair e voltar sem duplicar nada.
+    """
+    ALTER TABLE chunks ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE chunks ADD COLUMN error TEXT;
+    CREATE INDEX chunks_status ON chunks(status, run_id, idx);
+    CREATE TABLE transcripts (
+        id          INTEGER PRIMARY KEY,
+        chunk_id    INTEGER NOT NULL UNIQUE REFERENCES chunks(id),
+        provider    TEXT NOT NULL,
+        raw_json    TEXT NOT NULL,
+        created_at  TEXT NOT NULL
+    );
+    CREATE TABLE segments (
+        id              INTEGER PRIMARY KEY,
+        chunk_id        INTEGER NOT NULL REFERENCES chunks(id),
+        run_id          INTEGER NOT NULL REFERENCES capture_runs(id),
+        start_s         REAL NOT NULL,
+        end_s           REAL NOT NULL,
+        wall_at         TEXT,
+        speaker_label   TEXT NOT NULL,
+        role            TEXT NOT NULL CHECK (role IN ('A', 'B', 'M', '?')),
+        uncertain       INTEGER NOT NULL DEFAULT 0,
+        uncertain_reason TEXT,
+        text            TEXT NOT NULL
+    );
+    CREATE INDEX segments_run_time ON segments(run_id, start_s);
+    CREATE TABLE chunk_class (
+        chunk_id    INTEGER PRIMARY KEY REFERENCES chunks(id),
+        label       TEXT NOT NULL CHECK (label IN ('debate', 'comercial', 'vinheta', 'indefinido')),
+        source      TEXT NOT NULL,
+        reason      TEXT,
+        effective   TEXT NOT NULL CHECK (effective IN ('debate', 'intervalo')),
+        created_at  TEXT NOT NULL
+    );
+    CREATE TABLE debate_state (
+        id              INTEGER PRIMARY KEY CHECK (id = 1),
+        status          TEXT NOT NULL DEFAULT 'aguardando',
+        mode            TEXT NOT NULL DEFAULT 'ao_vivo',
+        manual_interval TEXT,
+        started_at      TEXT,
+        file_anchor_at  TEXT,
+        publish_paused  INTEGER NOT NULL DEFAULT 0,
+        auto_publish    INTEGER NOT NULL DEFAULT 1,
+        speakers_ready  INTEGER NOT NULL DEFAULT 0,
+        timeline_seq    INTEGER NOT NULL DEFAULT 0,
+        updated_at      TEXT NOT NULL
+    );
+    INSERT INTO debate_state (id, updated_at) VALUES (1, '1970-01-01T00:00:00+00:00');
+    CREATE TABLE claims (
+        id              INTEGER PRIMARY KEY,
+        chunk_id        INTEGER NOT NULL REFERENCES chunks(id),
+        run_id          INTEGER NOT NULL,
+        candidate_id    TEXT NOT NULL CHECK (candidate_id IN ('A', 'B')),
+        start_s         REAL NOT NULL,
+        wall_at         TEXT,
+        quote           TEXT NOT NULL,
+        claim           TEXT NOT NULL,
+        dedup_key       TEXT NOT NULL,
+        status          TEXT NOT NULL,
+        verdict         TEXT,
+        explanation     TEXT,
+        what_is_off     TEXT,
+        sources_json    TEXT,
+        verify_json     TEXT,
+        publish_at      TEXT,
+        published_at    TEXT,
+        updated_at      TEXT,
+        removed_at      TEXT,
+        note            TEXT,
+        attempts        INTEGER NOT NULL DEFAULT 0,
+        error           TEXT,
+        created_at      TEXT NOT NULL
+    );
+    CREATE INDEX claims_status ON claims(status);
+    CREATE UNIQUE INDEX claims_dedup ON claims(candidate_id, dedup_key);
+    CREATE TABLE api_costs (
+        id              INTEGER PRIMARY KEY,
+        at              TEXT NOT NULL,
+        provider        TEXT NOT NULL,
+        model           TEXT NOT NULL,
+        purpose         TEXT NOT NULL,
+        input_tokens    INTEGER NOT NULL DEFAULT 0,
+        output_tokens   INTEGER NOT NULL DEFAULT 0,
+        extra           TEXT,
+        usd             REAL NOT NULL
+    );
+    CREATE TABLE operator_log (
+        id      INTEGER PRIMARY KEY,
+        at      TEXT NOT NULL,
+        action  TEXT NOT NULL,
+        detail  TEXT
+    );
+    """,
 ]
 
 

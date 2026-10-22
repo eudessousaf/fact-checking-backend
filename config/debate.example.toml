@@ -27,3 +27,12 @@ name = "César Tralli"
 veto_minutes = 3
 # Mínimo de checagens publicadas para o gráfico de um candidato aparecer.
 min_checks_to_display = 8
+
+[voices]
+# 2 a 10 segundos de cada pessoa falando SOZINHA, sem outra voz por cima.
+# É assim que o sistema sabe quem fala em cada bloco: sem estas vozes, os
+# rótulos trocam de um bloco para o outro e nada é publicado sozinho.
+# Ouça cada arquivo antes do debate: voz trocada aqui troca os candidatos.
+A = "data/voices/lula.wav"
+B = "data/voices/flavio.wav"
+M = "data/voices/mediador.wav"

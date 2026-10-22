@@ -175,6 +175,38 @@ def cmd_transcribe_probe(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_pipeline(args: argparse.Namespace) -> int:
+    import threading
+
+    from factcheck.capture.runner import now_local
+    from factcheck.pipeline.runner import TranscribeWorkers
+    from factcheck.transcription.openai_diarize import OpenAIDiarizeTranscriber
+
+    settings = load_settings()
+    debate = load_debate_config(settings.debate_config_path)
+    setup_logging(settings.data_dir / "logs" / f"pipeline_{now_local():%Y%m%d_%H%M%S}.log")
+    stop = threading.Event()
+
+    def _stop(signum, _frame):
+        log.info("sinal %s recebido; terminando o que está em andamento…", signal.Signals(signum).name)
+        stop.set()
+
+    signal.signal(signal.SIGINT, _stop)
+    signal.signal(signal.SIGTERM, _stop)
+    workers = TranscribeWorkers(
+        settings, debate,
+        lambda: OpenAIDiarizeTranscriber(settings.openai_api_key, settings.transcription_model,
+                                         settings.transcription_language),
+        workers=args.workers)
+    threads = workers.start(stop)
+    while not stop.is_set():
+        stop.wait(1.0)
+    for t in threads:
+        t.join(timeout=150)
+    log.info("fluxo encerrado")
+    return 0
+
+
 def cmd_panel(_args: argparse.Namespace) -> int:
     import uvicorn
 
@@ -228,6 +260,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--ref", action="append", metavar="NOME=arquivo.wav",
                    help="voz de referência (2–10 s); repita para cada pessoa, até 4")
     p.set_defaults(func=cmd_transcribe_probe)
+
+    p = sub.add_parser("pipeline", help="roda o fluxo: transcrição (e os próximos estágios)")
+    p.add_argument("--workers", type=int, default=2,
+                   help="transcrições em paralelo (ao vivo: 2; arquivo inteiro: até 4)")
+    p.set_defaults(func=cmd_pipeline)
 
     p = sub.add_parser("panel", help="abre o painel do operador (só localhost)")
     p.set_defaults(func=cmd_panel)

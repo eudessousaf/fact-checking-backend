@@ -37,6 +37,8 @@ class DebateConfig:
     mediator_name: str
     veto_minutes: float
     min_checks_to_display: int
+    # papel ("A", "B", "M") → arquivo com 2–10 s da voz da pessoa sozinha
+    voices: dict[str, Path]
 
 
 @dataclass(frozen=True)
@@ -57,6 +59,8 @@ class Settings:
     openai_api_key: str
     transcription_model: str
     transcription_language: str | None
+    transcription_price_in_per_m: float
+    transcription_price_out_per_m: float
 
     @property
     def db_path(self) -> Path:
@@ -120,6 +124,10 @@ def load_settings(env_file: Path | None = None) -> Settings:
         openai_api_key=_env("OPENAI_API_KEY", "") or "",
         transcription_model=_env("TRANSCRIPTION_MODEL", "gpt-4o-transcribe-diarize") or "",
         transcription_language=_env("TRANSCRIPTION_LANGUAGE", "pt"),
+        # Preços de terceiros (out/2026), não lidos na OpenAI: confira no
+        # painel de uso e ajuste aqui se divergirem.
+        transcription_price_in_per_m=_env_float("TRANSCRIPTION_USD_PER_M_INPUT", 2.50),
+        transcription_price_out_per_m=_env_float("TRANSCRIPTION_USD_PER_M_OUTPUT", 10.00),
     )
 
 
@@ -136,6 +144,10 @@ def load_debate_config(path: Path) -> DebateConfig:
             for c in data["candidates"]
         )
         pub = data.get("publication", {})
+        voices = {role: _resolve(str(path)) for role, path in data.get("voices", {}).items()}
+        unknown = set(voices) - {"A", "B", "M"}
+        if unknown:
+            raise ConfigError(f"{path}: [voices] só aceita A, B e M; veio {sorted(unknown)}")
         cfg = DebateConfig(
             title=ev["title"],
             broadcaster=ev["broadcaster"],
@@ -145,6 +157,7 @@ def load_debate_config(path: Path) -> DebateConfig:
             mediator_name=data["mediator"]["name"],
             veto_minutes=float(pub.get("veto_minutes", 3)),
             min_checks_to_display=int(pub.get("min_checks_to_display", 8)),
+            voices=voices,
         )
     except KeyError as exc:
         raise ConfigError(f"{path}: campo obrigatório ausente: {exc}") from exc
