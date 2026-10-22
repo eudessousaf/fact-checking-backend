@@ -61,10 +61,29 @@ class Settings:
     transcription_language: str | None
     transcription_price_in_per_m: float
     transcription_price_out_per_m: float
+    anthropic_api_key: str
+    detect_model: str
+    verify_model: str
+    verify_effort: str
+    verify_workers: int
+    haiku_price_in_per_m: float
+    haiku_price_out_per_m: float
+    sonnet_price_in_per_m: float
+    sonnet_price_out_per_m: float
+    web_search_usd_per_1000: float
+    spaces_bucket: str
+    spaces_region: str
+    spaces_key: str
+    spaces_secret: str
+    spaces_prefix: str
 
     @property
     def db_path(self) -> Path:
         return self.data_dir / "factcheck.sqlite"
+
+    @property
+    def public_dir(self) -> Path:
+        return self.data_dir / "public"
 
     @property
     def audio_dir(self) -> Path:
@@ -128,6 +147,25 @@ def load_settings(env_file: Path | None = None) -> Settings:
         # painel de uso e ajuste aqui se divergirem.
         transcription_price_in_per_m=_env_float("TRANSCRIPTION_USD_PER_M_INPUT", 2.50),
         transcription_price_out_per_m=_env_float("TRANSCRIPTION_USD_PER_M_OUTPUT", 10.00),
+        anthropic_api_key=_env("ANTHROPIC_API_KEY", "") or "",
+        detect_model=_env("DETECT_MODEL", "claude-haiku-5-5") or "",
+        verify_model=_env("VERIFY_MODEL", "claude-sonnet-5-5") or "",
+        verify_effort=_env("VERIFY_EFFORT", "high") or "high",
+        verify_workers=int(_env_float("VERIFY_WORKERS", 2)),
+        # Preços da referência da API (out/2026); a busca na web não constava
+        # nela — US$ 10 por mil é o valor histórico, a conferir no painel.
+        haiku_price_in_per_m=_env_float("HAIKU_USD_PER_M_INPUT", 0.10),
+        haiku_price_out_per_m=_env_float("HAIKU_USD_PER_M_OUTPUT", 0.50),
+        sonnet_price_in_per_m=_env_float("SONNET_USD_PER_M_INPUT", 2.00),
+        sonnet_price_out_per_m=_env_float("SONNET_USD_PER_M_OUTPUT", 10.00),
+        web_search_usd_per_1000=_env_float("WEB_SEARCH_USD_PER_1000", 10.00),
+        spaces_bucket=_env("SPACES_BUCKET", "") or "",
+        spaces_region=_env("SPACES_REGION", "") or "",
+        spaces_key=_env("SPACES_KEY", "") or "",
+        spaces_secret=_env("SPACES_SECRET", "") or "",
+        # Teste e produção publicam em pastas diferentes do mesmo bucket: a
+        # página de teste nunca sobrescreve a oficial.
+        spaces_prefix=(_env("SPACES_PREFIX") or ("teste" if environment == "teste" else "")).strip("/"),
     )
 
 

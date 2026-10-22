@@ -147,6 +147,10 @@ MIGRATIONS: list[str] = [
         detail  TEXT
     );
     """,
+    # 3 — "voltou ao debate" do operador vale a partir do instante do clique.
+    """
+    ALTER TABLE debate_state ADD COLUMN resume_after TEXT;
+    """,
 ]
 
 

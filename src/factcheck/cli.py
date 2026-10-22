@@ -175,11 +175,30 @@ def cmd_transcribe_probe(args: argparse.Namespace) -> int:
     return 0
 
 
+def _uploaders(settings, extra_dir: str | None):
+    from factcheck.hosting import SpacesUploader
+    from factcheck.pipeline.publish import LocalDirUploader
+
+    ups = []
+    if extra_dir:
+        ups.append(LocalDirUploader(Path(extra_dir).expanduser().resolve()))
+    if settings.spaces_bucket:
+        ups.append(SpacesUploader(settings.spaces_bucket, settings.spaces_region, settings.spaces_key,
+                                  settings.spaces_secret, settings.spaces_prefix))
+    else:
+        log.warning("Spaces não configurado no .env: o timeline.json fica só em %s", settings.public_dir)
+    return ups
+
+
 def cmd_pipeline(args: argparse.Namespace) -> int:
     import threading
 
     from factcheck.capture.runner import now_local
-    from factcheck.pipeline.runner import TranscribeWorkers
+    from factcheck.costs import TokenPrice
+    from factcheck.db import connect
+    from factcheck.llm.claude import Claude, ClaudePrices
+    from factcheck.pipeline.publish import TimelinePublisher
+    from factcheck.pipeline.runner import AnalysisWorker, PublishLoop, TranscribeWorkers, VerifyWorkers
     from factcheck.transcription.openai_diarize import OpenAIDiarizeTranscriber
 
     settings = load_settings()
@@ -193,17 +212,65 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
 
     signal.signal(signal.SIGINT, _stop)
     signal.signal(signal.SIGTERM, _stop)
-    workers = TranscribeWorkers(
+
+    threads = TranscribeWorkers(
         settings, debate,
         lambda: OpenAIDiarizeTranscriber(settings.openai_api_key, settings.transcription_model,
                                          settings.transcription_language),
-        workers=args.workers)
-    threads = workers.start(stop)
+        workers=args.workers).start(stop)
+
+    if not settings.anthropic_api_key:
+        log.warning("ANTHROPIC_API_KEY vazio: só a TRANSCRIÇÃO vai rodar (sem intervalo, detecção e checagem)")
+    else:
+        prices = ClaudePrices(
+            haiku=TokenPrice(settings.haiku_price_in_per_m, settings.haiku_price_out_per_m),
+            sonnet=TokenPrice(settings.sonnet_price_in_per_m, settings.sonnet_price_out_per_m),
+            web_search_per_1000=settings.web_search_usd_per_1000)
+        claude = Claude(settings.anthropic_api_key, lambda: connect(settings.db_path), prices,
+                        settings.detect_model, settings.verify_model, settings.verify_effort)
+        threads += AnalysisWorker(settings, claude).start(stop)
+        threads += VerifyWorkers(settings, debate, claude, settings.verify_workers).start(stop)
+        publisher = TimelinePublisher(debate, settings.environment, settings.public_dir / "timeline.json",
+                                      _uploaders(settings, args.publicar_em))
+        threads += PublishLoop(settings, publisher).start(stop)
+        log.info("fluxo completo no ar: transcrição → intervalo → detecção → verificação → publicação")
+
     while not stop.is_set():
         stop.wait(1.0)
     for t in threads:
         t.join(timeout=150)
     log.info("fluxo encerrado")
+    return 0
+
+
+def cmd_deploy_site(args: argparse.Namespace) -> int:
+    from factcheck.hosting import SpacesUploader, deploy_site
+
+    settings = load_settings()
+    up = SpacesUploader(settings.spaces_bucket, settings.spaces_region, settings.spaces_key,
+                        settings.spaces_secret, settings.spaces_prefix)
+    public = Path(args.public_dir).expanduser().resolve()
+    if not (public / "index.html").exists():
+        raise ConfigError(f"{public} não tem index.html (é a pasta public/ do fact-checking-frontend?)")
+    sent = deploy_site(up, public, include_data=args.com_exemplos)
+    for name in sent:
+        print(f"  enviado: {name}")
+    print(f"\nPágina: {up.public_url('index.html')}")
+    return 0
+
+
+def cmd_costs(_args: argparse.Namespace) -> int:
+    from factcheck.costs import summary, total_usd
+    from factcheck.db import connect
+
+    settings = load_settings()
+    conn = connect(settings.db_path)
+    for row in summary(conn):
+        print(f"  {row['provider']:<10} {row['purpose']:<12} {row['calls']:>5} chamadas  "
+              f"{row['input_tokens'] or 0:>9} entrada  {row['output_tokens'] or 0:>9} saída  US$ {row['usd']:.4f}")
+    print(f"\nTotal estimado: US$ {total_usd(conn):.4f}  (Claude: US$ {total_usd(conn, 'anthropic'):.4f}; "
+          f"teto das checagens: US$ {settings.budget_hard_stop_usd:.0f})")
+    print("Os preços vêm do .env; o valor real é o do painel de cada provedor.")
     return 0
 
 
@@ -261,10 +328,21 @@ def build_parser() -> argparse.ArgumentParser:
                    help="voz de referência (2–10 s); repita para cada pessoa, até 4")
     p.set_defaults(func=cmd_transcribe_probe)
 
-    p = sub.add_parser("pipeline", help="roda o fluxo: transcrição (e os próximos estágios)")
+    p = sub.add_parser("pipeline", help="roda o fluxo inteiro: transcrição → checagem → publicação")
     p.add_argument("--workers", type=int, default=2,
                    help="transcrições em paralelo (ao vivo: 2; arquivo inteiro: até 4)")
+    p.add_argument("--publicar-em", metavar="PASTA",
+                   help="também grava o timeline.json nesta pasta (ex.: ../fact-checking-frontend/public)")
     p.set_defaults(func=cmd_pipeline)
+
+    p = sub.add_parser("deploy-site", help="envia a página pública para o Spaces")
+    p.add_argument("public_dir", help="a pasta public/ do fact-checking-frontend")
+    p.add_argument("--com-exemplos", action="store_true",
+                   help="envia também timeline.json e ads.json de exemplo (só no primeiro envio)")
+    p.set_defaults(func=cmd_deploy_site)
+
+    p = sub.add_parser("costs", help="mostra o gasto estimado por provedor e etapa")
+    p.set_defaults(func=cmd_costs)
 
     p = sub.add_parser("panel", help="abre o painel do operador (só localhost)")
     p.set_defaults(func=cmd_panel)

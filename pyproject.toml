@@ -19,6 +19,10 @@ dependencies = [
     # conhecido (known_speaker_*) são novos demais para confiar na tipagem
     # de um SDK sem poder conferir a documentação daqui.
     "httpx>=0.27,<1",
+    # Detecção e verificação (Haiku, Sonnet). 2.x exige Python >= 3.10.
+    "anthropic>=2.1,<3",
+    # Envio ao DigitalOcean Spaces, que fala o protocolo do S3.
+    "boto3>=1.34,<2",
 ]
 
 [project.optional-dependencies]
