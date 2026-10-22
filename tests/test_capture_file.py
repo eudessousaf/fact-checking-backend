@@ -88,3 +88,38 @@ def test_broken_file_fails_loudly(tmp_path: Path):
     with pytest.raises(RuntimeError, match="ffmpeg falhou"):
         runner.run()
     assert conn.execute("SELECT end_reason FROM capture_runs").fetchone()[0] == "stopped"
+
+
+def test_backup_parts_are_read_back_as_one_file(tmp_path: Path, tone_then_silence: Path):
+    from factcheck.capture.sources import backup_concat_list
+
+    conn = connect(tmp_path / "db.sqlite")
+    first = CaptureRunner(conn, tmp_path / "audio", SourceSpec("file", str(tone_then_silence)),
+                          CaptureParams(30, 2, -50, 20, backup_part_s=40))
+    first.run()
+    listing = backup_concat_list(first.run_dir / "backup", tmp_path / "tmp" / "b.ffconcat")
+    second = CaptureRunner(conn, tmp_path / "audio2", SourceSpec("file", str(listing)),
+                           CaptureParams(30, 2, -50, 20))
+    assert second.run() == "eof"
+    assert second.total_samples == 95 * 16000      # as 3 partes, sem buraco nem repetição
+
+
+def test_resume_offset_from_last_processed_speech(tmp_path: Path, monkeypatch):
+    from factcheck.cli import RESUME_MARGIN_S, resume_offset
+    from factcheck.config import load_settings
+
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    settings = load_settings(env_file=tmp_path / "x.env")
+    conn = connect(settings.db_path)
+    conn.execute("UPDATE debate_state SET started_at = '2026-10-23T21:22:00-03:00'")
+    run = conn.execute("INSERT INTO capture_runs (source_kind, source_name, started_at, audio_dir) "
+                       "VALUES ('pulse','x','x','')").lastrowid
+    ch = conn.execute("INSERT INTO chunks (run_id, idx, segment, offset_start_s, offset_end_s, path, mean_dbfs, "
+                      "status, created_at) VALUES (?, 1, 1, 0, 30, 'x', -20, 'detected', 'x')", (run,)).lastrowid
+    conn.execute("INSERT INTO segments (chunk_id, run_id, start_s, end_s, wall_at, speaker_label, role, text) "
+                 "VALUES (?, ?, 0, 5, '2026-10-23T22:02:00-03:00', 'REF_A', 'A', 'x')", (ch, run))
+    # 40 min de debate processados; no arquivo o debate começa no segundo 300.
+    assert resume_offset(settings, 300) == 300 + 40 * 60 - RESUME_MARGIN_S
+    state = conn.execute("SELECT mode, auto_publish, file_anchor_at FROM debate_state").fetchone()
+    assert (state["mode"], state["auto_publish"]) == ("pos_debate", 0)
+    assert state["file_anchor_at"] == "2026-10-23T21:17:00-03:00"

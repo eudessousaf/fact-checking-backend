@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import ipaddress
+from datetime import timedelta
 import logging
 import signal
 import sys
@@ -45,6 +46,45 @@ def cmd_check_config(_args: argparse.Namespace) -> int:
     return 0
 
 
+def resume_offset(settings, debate_start_in_file: float | None) -> float:
+    """Segundo do arquivo de onde continuar, quando o ao vivo caiu no meio.
+
+    A conta: (última fala já processada − início do debate) + onde o debate
+    começa no arquivo − margem. A margem repete alguns segundos de propósito:
+    afirmação repetida é descartada pelo índice de duplicatas; um buraco não
+    teria conserto.
+    """
+    from datetime import datetime
+
+    from factcheck.db import connect, transaction
+
+    if debate_start_in_file is None:
+        raise ConfigError("--retomar exige --inicio-no-arquivo SEGUNDOS (onde o debate começa neste arquivo)")
+    conn = connect(settings.db_path)
+    try:
+        state = conn.execute("SELECT started_at FROM debate_state WHERE id = 1").fetchone()
+        last = conn.execute(
+            "SELECT MAX(s.wall_at) FROM segments s JOIN chunks c ON c.id = s.chunk_id "
+            "WHERE c.status = 'detected' AND s.wall_at IS NOT NULL").fetchone()[0]
+        if not state["started_at"] or not last:
+            raise ConfigError("não há ao vivo processado para retomar (falta o início do debate ou nenhuma fala "
+                              "com horário). Rode sem --retomar e informe o início no painel.")
+        started = datetime.fromisoformat(state["started_at"])
+        elapsed = (datetime.fromisoformat(last) - started).total_seconds()
+        start = max(0.0, debate_start_in_file + elapsed - RESUME_MARGIN_S)
+        with transaction(conn):
+            conn.execute("UPDATE debate_state SET file_anchor_at = ?, mode = 'pos_debate', auto_publish = 0 "
+                         "WHERE id = 1", ((started - timedelta(seconds=debate_start_in_file)).isoformat(),))
+    finally:
+        conn.close()
+    log.info("retomando do segundo %.0f do arquivo (última fala processada: %s); modo pós-debate ligado",
+             start, last)
+    return start
+
+
+RESUME_MARGIN_S = 20.0
+
+
 def cmd_capture(args: argparse.Namespace) -> int:
     # Imports locais: `factcheck validate` não precisa carregar a captura.
     from factcheck.capture import sources
@@ -71,8 +111,14 @@ def cmd_capture(args: argparse.Namespace) -> int:
         path = Path(args.file).expanduser().resolve()
         if not path.exists():
             raise AudioSetupError(f"arquivo não encontrado: {path}")
+        if path.is_dir():
+            path = sources.backup_concat_list(path, settings.data_dir / "tmp" / f"{path.parent.name}.ffconcat")
+            log.info("lendo as partes do backup em sequência (%s)", path)
         sources.check_ffmpeg(require_pulse=False)
-        spec = SourceSpec("file", str(path), realtime=args.realtime, start_s=args.start)
+        start = args.start
+        if args.retomar:
+            start = resume_offset(settings, args.inicio_no_arquivo)
+        spec = SourceSpec("file", str(path), realtime=args.realtime, start_s=start)
     else:
         from factcheck.capture.routing import VIRTUAL_MONITOR
 
@@ -316,6 +362,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--file", help="usa um arquivo de áudio/vídeo em vez do som do sistema")
     p.add_argument("--realtime", action="store_true", help="com --file: lê no ritmo real, como ao vivo")
     p.add_argument("--start", type=float, default=0.0, help="com --file: começa neste segundo")
+    p.add_argument("--retomar", action="store_true",
+                   help="com --file: continua de onde o ao vivo parou (exige --inicio-no-arquivo)")
+    p.add_argument("--inicio-no-arquivo", type=float, metavar="SEGUNDOS",
+                   help="com --retomar: em que segundo do arquivo o debate começa")
     p.set_defaults(func=cmd_capture)
 
     p = sub.add_parser("audio-setup", help="monta a saída virtual 'Debate' e move o navegador para ela")

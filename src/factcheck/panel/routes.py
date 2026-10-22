@@ -102,9 +102,17 @@ def build_router(settings: Settings, debate: DebateConfig | None, auth, action) 
                     alerts.append(f"Vozes de referência faltando: {', '.join(missing)} (config/debate.toml).")
             total_chunks = sum(chunks.values())
             done = chunks.get("detected", 0)
+            # Estimativa de término (pós-debate): ritmo dos últimos 5 minutos.
+            from datetime import timedelta
+
+            since = (now_local() - timedelta(minutes=5)).isoformat()
+            recent = conn.execute("SELECT COUNT(*) FROM chunk_class WHERE created_at >= ?", (since,)).fetchone()[0]
+            eta_min = None
+            if recent and total_chunks > done:
+                eta_min = round((total_chunks - done) / (recent / 5.0), 1)
             return {
                 "state": state, "chunks": chunks,
-                "progress": {"done": done, "total": total_chunks},
+                "progress": {"done": done, "total": total_chunks, "eta_min": eta_min},
                 "balance": balance,
                 "costs": {"anthropic": round(spent, 4), "openai": round(total_usd(conn, "openai"), 4),
                           "warn": settings.budget_warn_usd, "hard": settings.budget_hard_stop_usd},

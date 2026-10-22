@@ -164,6 +164,19 @@ def ffmpeg_pulse_cmd(source_name: str) -> list[str]:
             "-f", "pulse", "-i", source_name, *_PCM_OUT]
 
 
+def backup_concat_list(directory: Path, list_path: Path) -> Path:
+    """A gravação de backup é feita em partes (backup_0001.wav, …); o ffmpeg as
+    lê em sequência, como um arquivo só, por uma lista no formato `concat`."""
+    parts = sorted(directory.glob("backup_*.wav"))
+    if not parts:
+        raise AudioSetupError(f"nenhuma parte backup_*.wav em {directory}")
+    list_path.parent.mkdir(parents=True, exist_ok=True)
+    # Aspas simples escapadas como o formato concat exige.
+    list_path.write_text("".join(f"file '{str(p.resolve()).replace(chr(39), chr(39) + chr(92) + chr(39) + chr(39))}'\n"
+                                 for p in parts), encoding="utf-8")
+    return list_path
+
+
 def ffmpeg_file_cmd(path: Path, realtime: bool, start_seconds: float = 0.0) -> list[str]:
     # -re lê o arquivo no ritmo real: simula o ao vivo com um arquivo, e é o
     # jeito de testar o fluxo inteiro sem navegador.
@@ -172,4 +185,6 @@ def ffmpeg_file_cmd(path: Path, realtime: bool, start_seconds: float = 0.0) -> l
         cmd.append("-re")
     if start_seconds > 0:
         cmd += ["-ss", f"{start_seconds:.3f}"]
+    if path.suffix == ".ffconcat":
+        cmd += ["-f", "concat", "-safe", "0"]
     return cmd + ["-i", str(path), "-vn", *_PCM_OUT]

@@ -177,7 +177,9 @@ function renderOverview(o) {
   $("pause").textContent = st.publish_paused ? "Retomar publicação" : "Pausar publicação";
   $("approveAll").hidden = st.mode !== "pos_debate";
   $("alerts").replaceChildren(...o.alerts.map((a) => el("div", { class: "alert" }, a)));
-  $("progress").textContent = `${o.progress.done} de ${o.progress.total} blocos`;
+  const pr = o.progress;
+  const pct = pr.total ? Math.round(pr.done / pr.total * 100) : 0;
+  $("progress").textContent = `${pr.done} de ${pr.total} blocos (${pct}%)` + (pr.eta_min != null ? ` · termina em ~${Math.ceil(pr.eta_min)} min` : "");
   const tb = $("balance").querySelector("tbody");
   tb.replaceChildren(...o.balance.map((b) => el("tr", null, el("th", null, b.name), el("td", null, b.detected), el("td", null, b.checked), el("td", null, b.published), el("td", null, b.sem_evidencia))));
   $("verdicts").textContent = o.balance.map((b) => `${b.name}: ` + (Object.entries(b.verdicts).map(([v, n]) => `${VERDICTS[v] || v} ${n}`).join(", ") || "nada publicado")).join(" · ");
